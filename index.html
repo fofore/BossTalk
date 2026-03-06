@@ -1,14 +1,307 @@
-<!doctype html>
-<html lang="en">
+<!DOCTYPE html>
+<html lang="ko">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Hello World</title>
-  <link href='/style.css' rel='stylesheet'>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>돌팔매쟁이 장현철</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            background-color: #2c3e50;
+            color: white;
+            font-family: 'Malgun Gothic', sans-serif;
+            overflow: hidden;
+        }
+        h1 {
+            margin: 20px 0 10px 0;
+            text-shadow: 2px 2px 4px #000;
+        }
+        #game-container {
+            position: relative;
+            width: 800px;
+            height: 500px;
+            background-color: #ecf0f1;
+            box-shadow: 0 0 20px rgba(0,0,0,0.5);
+            border-radius: 10px;
+            overflow: hidden;
+        }
+        canvas {
+            display: block;
+        }
+        .overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.7);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            color: white;
+            z-index: 10;
+        }
+        .hidden {
+            display: none !important;
+        }
+        .btn {
+            padding: 15px 30px;
+            margin: 10px;
+            font-size: 18px;
+            font-weight: bold;
+            cursor: pointer;
+            border: none;
+            border-radius: 5px;
+            background-color: #3498db;
+            color: white;
+            transition: 0.2s;
+        }
+        .btn:hover {
+            background-color: #2980b9;
+        }
+        .btn-oh { background-color: #2ecc71; }
+        .btn-oh:hover { background-color: #27ae60; }
+        #ui-bar {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            right: 10px;
+            display: flex;
+            justify-content: space-between;
+            color: #2c3e50;
+            font-size: 20px;
+            font-weight: bold;
+            z-index: 5;
+            pointer-events: none;
+        }
+    </style>
 </head>
 <body>
-  <h1>Hello, world!</h1>
-  <button onclick="console.log('hello');">Press me</button>
-  <script defer type="text/javascript" src="/main.js"></script>
+
+    <h1>돌팔매쟁이 장현철</h1>
+    
+    <div id="game-container">
+        <div id="ui-bar" class="hidden">
+            <div id="time-display">버틴 시간: 0.00초</div>
+            <div id="hp-display">생명: ♥♥♥</div>
+        </div>
+
+        <div id="start-screen" class="overlay">
+            <h2>캐릭터를 선택하세요</h2>
+            <div>
+                <button class="btn" onclick="startGame('이종석', '#3498db')">이종석 플레이</button>
+                <button class="btn btn-oh" onclick="startGame('오재호', '#2ecc71')">오재호 플레이</button>
+            </div>
+            <p style="margin-top: 20px;">방향키(상하좌우)로 장현철이 던지는 돌을 피하세요!</p>
+        </div>
+
+        <div id="game-over-screen" class="overlay hidden">
+            <h2 style="color: #e74c3c;">게임 오버!</h2>
+            <h3 id="final-time">버틴 시간: 0초</h3>
+            <button class="btn" onclick="showStartScreen()">다시 하기</button>
+        </div>
+
+        <canvas id="gameCanvas" width="800" height="500"></canvas>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        
+        // Screens
+        const startScreen = document.getElementById('start-screen');
+        const gameOverScreen = document.getElementById('game-over-screen');
+        const uiBar = document.getElementById('ui-bar');
+        const timeDisplay = document.getElementById('time-display');
+        const hpDisplay = document.getElementById('hp-display');
+        const finalTimeDisplay = document.getElementById('final-time');
+
+        // Game state
+        let animationId;
+        let isPlaying = false;
+        let startTime;
+        let elapsedTime = 0;
+        let keys = {};
+
+        // Entities
+        let player = { x: 100, y: 250, width: 40, height: 40, speed: 5, color: '', name: '', hp: 3 };
+        let enemy = { x: 750, y: 250, width: 50, height: 80, speed: 2, color: '#e74c3c', name: '장현철' };
+        let stones = [];
+        
+        // Difficulty variables
+        let baseSpawnRate = 1000; // ms
+        let lastSpawnTime = 0;
+
+        // Input handling
+        window.addEventListener('keydown', (e) => keys[e.code] = true);
+        window.addEventListener('keyup', (e) => keys[e.code] = false);
+
+        function showStartScreen() {
+            gameOverScreen.classList.add('hidden');
+            uiBar.classList.add('hidden');
+            startScreen.classList.remove('hidden');
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+        }
+
+        function startGame(playerName, playerColor) {
+            startScreen.classList.add('hidden');
+            uiBar.classList.remove('hidden');
+            
+            player.name = playerName;
+            player.color = playerColor;
+            player.hp = 3;
+            player.x = 100;
+            player.y = canvas.height / 2 - player.height / 2;
+            
+            enemy.y = canvas.height / 2 - enemy.height / 2;
+            stones = [];
+            
+            startTime = Date.now();
+            lastSpawnTime = startTime;
+            isPlaying = true;
+            
+            updateHPDisplay();
+            gameLoop();
+        }
+
+        function updateHPDisplay() {
+            let hearts = '';
+            for(let i=0; i<player.hp; i++) hearts += '♥';
+            hpDisplay.textContent = `생명: ${hearts}`;
+            if(player.hp <= 1) hpDisplay.style.color = '#e74c3c';
+            else hpDisplay.style.color = '#2c3e50';
+        }
+
+        function gameOver() {
+            isPlaying = false;
+            cancelAnimationFrame(animationId);
+            uiBar.classList.add('hidden');
+            gameOverScreen.classList.remove('hidden');
+            finalTimeDisplay.textContent = `기록: ${elapsedTime.toFixed(2)}초`;
+        }
+
+        function spawnStone() {
+            // Difficulty increases as time passes (faster stones, more random angles)
+            const speedMultiplier = 1 + (elapsedTime / 10); 
+            
+            // Stone properties
+            const radius = 8 + Math.random() * 7;
+            const x = enemy.x;
+            const y = enemy.y + enemy.height / 2;
+            
+            // Aim at player slightly but with randomness
+            const angle = Math.atan2((player.y + player.height/2) - y, player.x - x);
+            const spread = (Math.random() - 0.5) * 0.5; // Random spread
+            
+            const speed = (5 + Math.random() * 3) * speedMultiplier;
+            const vx = Math.cos(angle + spread) * speed;
+            const vy = Math.sin(angle + spread) * speed;
+
+            stones.push({ x, y, vx, vy, radius });
+        }
+
+        function update() {
+            const now = Date.now();
+            elapsedTime = (now - startTime) / 1000;
+            timeDisplay.textContent = `버틴 시간: ${elapsedTime.toFixed(2)}초`;
+
+            // Player movement
+            if (keys['ArrowUp'] && player.y > 0) player.y -= player.speed;
+            if (keys['ArrowDown'] && player.y + player.height < canvas.height) player.y += player.speed;
+            if (keys['ArrowLeft'] && player.x > 0) player.x -= player.speed;
+            if (keys['ArrowRight'] && player.x + player.width < enemy.x - 100) player.x += player.speed; // Limit right movement
+
+            // Enemy movement (moves up and down slightly)
+            enemy.y += Math.sin(now / 300) * 3;
+            if (enemy.y < 0) enemy.y = 0;
+            if (enemy.y + enemy.height > canvas.height) enemy.y = canvas.height - enemy.height;
+
+            // Spawn stones
+            const currentSpawnRate = Math.max(200, baseSpawnRate - elapsedTime * 30); // Spawns faster over time
+            if (now - lastSpawnTime > currentSpawnRate) {
+                spawnStone();
+                lastSpawnTime = now;
+            }
+
+            // Update stones & Collision
+            for (let i = stones.length - 1; i >= 0; i--) {
+                let s = stones[i];
+                s.x += s.vx;
+                s.y += s.vy;
+
+                // Collision detection (Circle to Rectangle)
+                let testX = s.x;
+                let testY = s.y;
+
+                if (s.x < player.x) testX = player.x;
+                else if (s.x > player.x + player.width) testX = player.x + player.width;
+                if (s.y < player.y) testY = player.y;
+                else if (s.y > player.y + player.height) testY = player.y + player.height;
+
+                let distX = s.x - testX;
+                let distY = s.y - testY;
+                let distance = Math.sqrt((distX*distX) + (distY*distY));
+
+                if (distance <= s.radius) {
+                    // Hit!
+                    stones.splice(i, 1);
+                    player.hp--;
+                    updateHPDisplay();
+                    
+                    // Flash screen effect
+                    ctx.fillStyle = 'rgba(231, 76, 60, 0.5)';
+                    ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+                    if (player.hp <= 0) {
+                        gameOver();
+                        return;
+                    }
+                } 
+                // Remove stones off screen
+                else if (s.x < -20 || s.y < -20 || s.y > canvas.height + 20) {
+                    stones.splice(i, 1);
+                }
+            }
+        }
+
+        function draw() {
+            // Clear canvas
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            // Draw Enemy (장현철)
+            ctx.fillStyle = enemy.color;
+            ctx.fillRect(enemy.x, enemy.y, enemy.width, enemy.height);
+            ctx.fillStyle = 'black';
+            ctx.font = '14px Malgun Gothic';
+            ctx.fillText(enemy.name, enemy.x - 5, enemy.y - 10);
+
+            // Draw Player
+            ctx.fillStyle = player.color;
+            ctx.fillRect(player.x, player.y, player.width, player.height);
+            ctx.fillStyle = 'black';
+            ctx.fillText(player.name, player.x - 5, player.y - 10);
+
+            // Draw Stones
+            ctx.fillStyle = '#7f8c8d';
+            for (let s of stones) {
+                ctx.beginPath();
+                ctx.arc(s.x, s.y, s.radius, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.closePath();
+            }
+        }
+
+        function gameLoop() {
+            if (!isPlaying) return;
+            update();
+            draw();
+            animationId = requestAnimationFrame(gameLoop);
+        }
+    </script>
 </body>
 </html>
