@@ -2,7 +2,7 @@
 <html lang="ko">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>돌팔매쟁이 장현철</title>
     <style>
         body {
@@ -15,22 +15,27 @@
             color: white;
             font-family: 'Malgun Gothic', sans-serif;
             overflow: hidden;
+            touch-action: none; /* 모바일에서 스크롤 방지 */
         }
         h1 {
-            margin: 20px 0 10px 0;
+            margin: 15px 0 10px 0;
+            font-size: 24px;
             text-shadow: 2px 2px 4px #000;
         }
         #game-container {
             position: relative;
-            width: 800px;
-            height: 500px;
+            width: 100%;
+            max-width: 800px;
+            /* 가로세로 비율 유지 (800:500) */
+            aspect-ratio: 8 / 5; 
             background-color: #ecf0f1;
             box-shadow: 0 0 20px rgba(0,0,0,0.5);
-            border-radius: 10px;
             overflow: hidden;
         }
         canvas {
             display: block;
+            width: 100%;
+            height: 100%;
         }
         .overlay {
             position: absolute;
@@ -38,21 +43,22 @@
             left: 0;
             width: 100%;
             height: 100%;
-            background: rgba(0, 0, 0, 0.7);
+            background: rgba(0, 0, 0, 0.8);
             display: flex;
             flex-direction: column;
             justify-content: center;
             align-items: center;
             color: white;
             z-index: 10;
+            text-align: center;
         }
         .hidden {
             display: none !important;
         }
         .btn {
-            padding: 15px 30px;
+            padding: 12px 20px;
             margin: 10px;
-            font-size: 18px;
+            font-size: 16px;
             font-weight: bold;
             cursor: pointer;
             border: none;
@@ -74,10 +80,15 @@
             display: flex;
             justify-content: space-between;
             color: #2c3e50;
-            font-size: 20px;
+            font-size: 16px;
             font-weight: bold;
             z-index: 5;
             pointer-events: none;
+        }
+        p {
+            margin: 10px;
+            font-size: 14px;
+            line-height: 1.5;
         }
     </style>
 </head>
@@ -92,12 +103,12 @@
         </div>
 
         <div id="start-screen" class="overlay">
-            <h2>캐릭터를 선택하세요</h2>
+            <h2>캐릭터 선택</h2>
             <div>
-                <button class="btn" onclick="startGame('이종석', '#3498db')">이종석 플레이</button>
-                <button class="btn btn-oh" onclick="startGame('오재호', '#2ecc71')">오재호 플레이</button>
+                <button class="btn" onclick="startGame('이종석', '#3498db')">이종석</button>
+                <button class="btn btn-oh" onclick="startGame('오재호', '#2ecc71')">오재호</button>
             </div>
-            <p style="margin-top: 20px;">방향키(상하좌우)로 장현철이 던지는 돌을 피하세요!</p>
+            <p>💻 PC: 방향키 이동<br>📱 모바일: 화면 터치 후 드래그</p>
         </div>
 
         <div id="game-over-screen" class="overlay hidden">
@@ -113,7 +124,6 @@
         const canvas = document.getElementById('gameCanvas');
         const ctx = canvas.getContext('2d');
         
-        // Screens
         const startScreen = document.getElementById('start-screen');
         const gameOverScreen = document.getElementById('game-over-screen');
         const uiBar = document.getElementById('ui-bar');
@@ -121,25 +131,51 @@
         const hpDisplay = document.getElementById('hp-display');
         const finalTimeDisplay = document.getElementById('final-time');
 
-        // Game state
         let animationId;
         let isPlaying = false;
         let startTime;
         let elapsedTime = 0;
         let keys = {};
 
-        // Entities
-        let player = { x: 100, y: 250, width: 40, height: 40, speed: 5, color: '', name: '', hp: 3 };
-        let enemy = { x: 750, y: 250, width: 50, height: 80, speed: 2, color: '#e74c3c', name: '장현철' };
+        let player = { x: 100, y: 250, width: 40, height: 40, speed: 6, color: '', name: '', hp: 3 };
+        let enemy = { x: 700, y: 250, width: 50, height: 80, speed: 2, color: '#e74c3c', name: '장현철' };
         let stones = [];
         
-        // Difficulty variables
-        let baseSpawnRate = 1000; // ms
+        let baseSpawnRate = 1000;
         let lastSpawnTime = 0;
 
-        // Input handling
+        // PC 키보드 입력
         window.addEventListener('keydown', (e) => keys[e.code] = true);
         window.addEventListener('keyup', (e) => keys[e.code] = false);
+
+        // 모바일 터치 및 드래그 처리
+        function handleTouch(e) {
+            e.preventDefault(); // 스크롤 방지
+            if (!isPlaying) return;
+
+            const rect = canvas.getBoundingClientRect();
+            const touch = e.touches[0];
+            
+            // CSS 크기와 실제 캔버스 해상도(800x500) 비율 계산
+            const scaleX = canvas.width / rect.width;
+            const scaleY = canvas.height / rect.height;
+
+            // 터치 위치 계산 (캐릭터 중앙이 손가락에 오도록)
+            let touchX = (touch.clientX - rect.left) * scaleX;
+            let touchY = (touch.clientY - rect.top) * scaleY;
+
+            player.x = touchX - player.width / 2;
+            player.y = touchY - player.height / 2;
+
+            // 캐릭터가 화면 밖으로 나가지 않게 경계 설정
+            if (player.x < 0) player.x = 0;
+            if (player.x + player.width > enemy.x - 50) player.x = enemy.x - 50 - player.width;
+            if (player.y < 0) player.y = 0;
+            if (player.y + player.height > canvas.height) player.y = canvas.height - player.height;
+        }
+
+        canvas.addEventListener('touchstart', handleTouch, { passive: false });
+        canvas.addEventListener('touchmove', handleTouch, { passive: false });
 
         function showStartScreen() {
             gameOverScreen.classList.add('hidden');
@@ -186,17 +222,13 @@
         }
 
         function spawnStone() {
-            // Difficulty increases as time passes (faster stones, more random angles)
             const speedMultiplier = 1 + (elapsedTime / 10); 
-            
-            // Stone properties
             const radius = 8 + Math.random() * 7;
             const x = enemy.x;
             const y = enemy.y + enemy.height / 2;
             
-            // Aim at player slightly but with randomness
             const angle = Math.atan2((player.y + player.height/2) - y, player.x - x);
-            const spread = (Math.random() - 0.5) * 0.5; // Random spread
+            const spread = (Math.random() - 0.5) * 0.5; 
             
             const speed = (5 + Math.random() * 3) * speedMultiplier;
             const vx = Math.cos(angle + spread) * speed;
@@ -210,31 +242,30 @@
             elapsedTime = (now - startTime) / 1000;
             timeDisplay.textContent = `버틴 시간: ${elapsedTime.toFixed(2)}초`;
 
-            // Player movement
+            // 키보드 조작 (터치 미사용 시)
             if (keys['ArrowUp'] && player.y > 0) player.y -= player.speed;
             if (keys['ArrowDown'] && player.y + player.height < canvas.height) player.y += player.speed;
             if (keys['ArrowLeft'] && player.x > 0) player.x -= player.speed;
-            if (keys['ArrowRight'] && player.x + player.width < enemy.x - 100) player.x += player.speed; // Limit right movement
+            if (keys['ArrowRight'] && player.x + player.width < enemy.x - 50) player.x += player.speed;
 
-            // Enemy movement (moves up and down slightly)
-            enemy.y += Math.sin(now / 300) * 3;
+            // 장현철(적) 상하 이동 패턴
+            enemy.y += Math.sin(now / 300) * 4;
             if (enemy.y < 0) enemy.y = 0;
             if (enemy.y + enemy.height > canvas.height) enemy.y = canvas.height - enemy.height;
 
-            // Spawn stones
-            const currentSpawnRate = Math.max(200, baseSpawnRate - elapsedTime * 30); // Spawns faster over time
+            // 돌 생성 주기
+            const currentSpawnRate = Math.max(150, baseSpawnRate - elapsedTime * 35); 
             if (now - lastSpawnTime > currentSpawnRate) {
                 spawnStone();
                 lastSpawnTime = now;
             }
 
-            // Update stones & Collision
+            // 돌 이동 및 충돌 판정
             for (let i = stones.length - 1; i >= 0; i--) {
                 let s = stones[i];
                 s.x += s.vx;
                 s.y += s.vy;
 
-                // Collision detection (Circle to Rectangle)
                 let testX = s.x;
                 let testY = s.y;
 
@@ -248,12 +279,10 @@
                 let distance = Math.sqrt((distX*distX) + (distY*distY));
 
                 if (distance <= s.radius) {
-                    // Hit!
                     stones.splice(i, 1);
                     player.hp--;
                     updateHPDisplay();
                     
-                    // Flash screen effect
                     ctx.fillStyle = 'rgba(231, 76, 60, 0.5)';
                     ctx.fillRect(0, 0, canvas.width, canvas.height);
 
@@ -262,7 +291,6 @@
                         return;
                     }
                 } 
-                // Remove stones off screen
                 else if (s.x < -20 || s.y < -20 || s.y > canvas.height + 20) {
                     stones.splice(i, 1);
                 }
@@ -270,23 +298,23 @@
         }
 
         function draw() {
-            // Clear canvas
             ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-            // Draw Enemy (장현철)
+            // 장현철 그리기
             ctx.fillStyle = enemy.color;
             ctx.fillRect(enemy.x, enemy.y, enemy.width, enemy.height);
             ctx.fillStyle = 'black';
-            ctx.font = '14px Malgun Gothic';
-            ctx.fillText(enemy.name, enemy.x - 5, enemy.y - 10);
+            ctx.font = 'bold 14px Malgun Gothic';
+            ctx.fillText(enemy.name, enemy.x + 3, enemy.y - 10);
 
-            // Draw Player
+            // 플레이어 그리기
             ctx.fillStyle = player.color;
             ctx.fillRect(player.x, player.y, player.width, player.height);
             ctx.fillStyle = 'black';
-            ctx.fillText(player.name, player.x - 5, player.y - 10);
+            ctx.font = 'bold 14px Malgun Gothic';
+            ctx.fillText(player.name, player.x, player.y - 10);
 
-            // Draw Stones
+            // 돌 그리기
             ctx.fillStyle = '#7f8c8d';
             for (let s of stones) {
                 ctx.beginPath();
