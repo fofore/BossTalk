@@ -24,7 +24,8 @@
         /* 상단 헤더 */
         header {
             background-color: #ffffff;
-            padding: 15px 20px;
+            /* 아이폰 노치 등 상단 안전 영역(Safe Area) 대응 추가 */
+            padding: calc(15px + env(safe-area-inset-top)) 20px 15px 20px;
             border-bottom: 1px solid #e0e0e0;
             position: sticky;
             top: 0;
@@ -69,11 +70,13 @@
 
         /* 채팅방 내부 UI (소통방 클릭 시) */
         #chat-room { display: none; height: 100%; flex-direction: column; }
-        .chat-messages { flex: 1; overflow-y: auto; background: #f9f9f9; padding: 15px; border-radius: 8px; margin-bottom: 10px; min-height: 300px; }
+        
+        /* 부드러운 스크롤(scroll-behavior: smooth) 추가 */
+        .chat-messages { flex: 1; overflow-y: auto; background: #f9f9f9; padding: 15px; border-radius: 8px; margin-bottom: 10px; min-height: 300px; scroll-behavior: smooth; }
         .message { margin-bottom: 10px; font-size: 14px; padding: 10px; background: #fff; border-radius: 8px; border: 1px solid #eee; }
         .chat-input-area { display: flex; gap: 10px; }
         .chat-input-area input { flex: 1; padding: 12px; border: 1px solid #ddd; border-radius: 8px; }
-        .chat-input-area button { padding: 12px 20px; background: #4f46e5; color: white; border: none; border-radius: 8px; font-weight: bold; }
+        .chat-input-area button { padding: 12px 20px; background: #4f46e5; color: white; border: none; border-radius: 8px; font-weight: bold; cursor: pointer; }
 
         /* 하단 탭 메뉴 (Tab Menu) */
         .bottom-nav {
@@ -165,7 +168,7 @@
             <div class="list-card" style="text-align:center; padding: 30px 15px;">
                 <h3>로그인하고 사장톡을 100% 활용하세요!</h3>
                 <p style="margin-top: 10px; margin-bottom: 20px;">사업자 인증 시 '인증 마크'가 부여됩니다.</p>
-                <button style="padding: 12px 40px; background: #333; color: white; border: none; border-radius: 8px; font-weight: bold;">카카오로 시작하기</button>
+                <button style="padding: 12px 40px; background: #333; color: white; border: none; border-radius: 8px; font-weight: bold; cursor: pointer;">카카오로 시작하기</button>
             </div>
         </div>
     </main>
@@ -211,11 +214,11 @@
         }
     }
 
-    // --- 2. 개별 채팅방(데이터 분리) 로직 ---
+    // --- 2. 개별 채팅방(데이터 분리 & 로컬 스토리지 적용) 로직 ---
     let currentRoomId = null;
     
-    // 임시 데이터베이스 (방 ID별로 메시지를 배열로 관리하여 섞이지 않게 함)
-    const chatDatabase = {
+    // 초기 기본 데이터
+    const defaultData = {
         'yongin': [
             "사장님1: 오늘 비가 와서 그런지 홀이 조용하네요 ㅠㅠ",
             "사장님2: 맞아요, 배달만 조금 들어오네요."
@@ -225,6 +228,9 @@
             "박사장: 당근알바에 올리면 금방 구해집니다~"
         ]
     };
+
+    // 로컬 스토리지에서 저장된 데이터 불러오기 (없으면 기본 데이터 사용)
+    let chatDatabase = JSON.parse(localStorage.getItem('SajangTalk_Data')) || defaultData;
 
     function openChatRoom(roomId) {
         currentRoomId = roomId;
@@ -249,7 +255,7 @@
         const msgContainer = document.getElementById('chat-messages');
         msgContainer.innerHTML = ''; // 기존 내용 지우기
         
-        // 현재 방의 데이터만 불러와서 화면에 그림 (다른 방 데이터와 격리됨)
+        // 현재 방의 데이터만 불러와서 화면에 그림
         const messages = chatDatabase[currentRoomId] || [];
         messages.forEach(msg => {
             const div = document.createElement('div');
@@ -258,7 +264,7 @@
             msgContainer.appendChild(div);
         });
         
-        // 스크롤 맨 아래로
+        // 스크롤 맨 아래로 이동
         msgContainer.scrollTop = msgContainer.scrollHeight;
     }
 
@@ -267,12 +273,23 @@
         const text = input.value.trim();
         
         if(text && currentRoomId) {
-            // 현재 방의 배열에만 메시지 추가
+            // 현재 방의 배열에 메시지 추가
             chatDatabase[currentRoomId].push("나: " + text);
+            
+            // 변경된 데이터를 로컬 스토리지에 저장하여 새로고침해도 유지되게 함
+            localStorage.setItem('SajangTalk_Data', JSON.stringify(chatDatabase));
+            
             input.value = '';
             renderMessages();
         }
     }
+
+    // --- 3. 엔터 키 전송 이벤트 추가 ---
+    document.getElementById('chat-input').addEventListener('keypress', function(e) {
+        if (e.key === 'Enter') {
+            sendMessage();
+        }
+    });
 </script>
 
 </body>
