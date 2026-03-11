@@ -3,333 +3,277 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>돌팔매쟁이 장현철</title>
+    <title>사장톡 | 대한민국 사장님 필수 앱</title>
     <style>
-        body {
-            margin: 0;
-            padding: 0;
+        /* 기본 모바일 앱 스타일 초기화 */
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Pretendard', -apple-system, sans-serif; }
+        body { background-color: #f4f5f7; display: flex; justify-content: center; }
+        
+        /* 모바일 화면 컨테이너 (PC에서 볼 때 모바일처럼 보이게) */
+        #app-container {
+            width: 100%;
+            max-width: 480px;
+            background-color: #ffffff;
+            height: 100vh;
             display: flex;
             flex-direction: column;
-            align-items: center;
-            background-color: #2c3e50;
-            color: white;
-            font-family: 'Malgun Gothic', sans-serif;
-            overflow: hidden;
-            touch-action: none; /* 모바일에서 스크롤 방지 */
-        }
-        h1 {
-            margin: 15px 0 10px 0;
-            font-size: 24px;
-            text-shadow: 2px 2px 4px #000;
-        }
-        #game-container {
             position: relative;
-            width: 100%;
-            max-width: 800px;
-            /* 가로세로 비율 유지 (800:500) */
-            aspect-ratio: 8 / 5; 
-            background-color: #ecf0f1;
-            box-shadow: 0 0 20px rgba(0,0,0,0.5);
-            overflow: hidden;
+            box-shadow: 0 0 20px rgba(0,0,0,0.1);
         }
-        canvas {
-            display: block;
-            width: 100%;
-            height: 100%;
-        }
-        .overlay {
-            position: absolute;
+
+        /* 상단 헤더 */
+        header {
+            background-color: #ffffff;
+            padding: 15px 20px;
+            border-bottom: 1px solid #e0e0e0;
+            position: sticky;
             top: 0;
-            left: 0;
+            z-index: 10;
+        }
+        header h1 { font-size: 20px; color: #333; }
+
+        /* 메인 콘텐츠 영역 (스크롤 가능) */
+        main {
+            flex: 1;
+            overflow-y: auto;
+            padding: 20px;
+            padding-bottom: 80px; /* 하단바에 가리지 않게 여백 */
+        }
+
+        /* 각 탭의 화면 (초기엔 숨김) */
+        .tab-content { display: none; }
+        .tab-content.active { display: block; }
+
+        /* UI 리스트 스타일 (소통방, 장터 등) */
+        .list-card {
+            background: #fff;
+            border: 1px solid #eee;
+            border-radius: 12px;
+            padding: 15px;
+            margin-bottom: 12px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.02);
+            cursor: pointer;
+        }
+        .list-card h3 { font-size: 16px; margin-bottom: 5px; color: #222; }
+        .list-card p { font-size: 13px; color: #666; }
+        .badge {
+            display: inline-block;
+            padding: 3px 8px;
+            background: #eef2ff;
+            color: #4f46e5;
+            border-radius: 4px;
+            font-size: 11px;
+            font-weight: bold;
+            margin-bottom: 8px;
+        }
+
+        /* 채팅방 내부 UI (소통방 클릭 시) */
+        #chat-room { display: none; height: 100%; flex-direction: column; }
+        .chat-messages { flex: 1; overflow-y: auto; background: #f9f9f9; padding: 15px; border-radius: 8px; margin-bottom: 10px; min-height: 300px; }
+        .message { margin-bottom: 10px; font-size: 14px; padding: 10px; background: #fff; border-radius: 8px; border: 1px solid #eee; }
+        .chat-input-area { display: flex; gap: 10px; }
+        .chat-input-area input { flex: 1; padding: 12px; border: 1px solid #ddd; border-radius: 8px; }
+        .chat-input-area button { padding: 12px 20px; background: #4f46e5; color: white; border: none; border-radius: 8px; font-weight: bold; }
+
+        /* 하단 탭 메뉴 (Tab Menu) */
+        .bottom-nav {
+            position: absolute;
+            bottom: 0;
             width: 100%;
-            height: 100%;
-            background: rgba(0, 0, 0, 0.8);
+            background-color: #ffffff;
+            display: flex;
+            border-top: 1px solid #e0e0e0;
+            padding-bottom: env(safe-area-inset-bottom); /* 아이폰 하단 바 대응 */
+        }
+        .nav-item {
+            flex: 1;
+            text-align: center;
+            padding: 15px 0;
+            color: #888;
+            font-size: 12px;
+            text-decoration: none;
             display: flex;
             flex-direction: column;
-            justify-content: center;
             align-items: center;
-            color: white;
-            z-index: 10;
-            text-align: center;
-        }
-        .hidden {
-            display: none !important;
-        }
-        .btn {
-            padding: 12px 20px;
-            margin: 10px;
-            font-size: 16px;
-            font-weight: bold;
+            gap: 4px;
             cursor: pointer;
-            border: none;
-            border-radius: 5px;
-            background-color: #3498db;
-            color: white;
-            transition: 0.2s;
         }
-        .btn:hover {
-            background-color: #2980b9;
-        }
-        .btn-oh { background-color: #2ecc71; }
-        .btn-oh:hover { background-color: #27ae60; }
-        #ui-bar {
-            position: absolute;
-            top: 10px;
-            left: 10px;
-            right: 10px;
-            display: flex;
-            justify-content: space-between;
-            color: #2c3e50;
-            font-size: 16px;
-            font-weight: bold;
-            z-index: 5;
-            pointer-events: none;
-        }
-        p {
-            margin: 10px;
-            font-size: 14px;
-            line-height: 1.5;
-        }
+        .nav-item.active { color: #4f46e5; font-weight: bold; }
+        .nav-icon { font-size: 20px; }
     </style>
 </head>
 <body>
 
-    <h1>돌팔매쟁이 장현철</h1>
-    
-    <div id="game-container">
-        <div id="ui-bar" class="hidden">
-            <div id="time-display">버틴 시간: 0.00초</div>
-            <div id="hp-display">생명: ♥♥♥</div>
-        </div>
+<div id="app-container">
+    <header>
+        <h1 id="header-title">지역별 소통방</h1>
+    </header>
 
-        <div id="start-screen" class="overlay">
-            <h2>캐릭터 선택</h2>
-            <div>
-                <button class="btn" onclick="startGame('이종석', '#3498db')">이종석</button>
-                <button class="btn btn-oh" onclick="startGame('오재호', '#2ecc71')">오재호</button>
+    <main>
+        <div id="tab-chat" class="tab-content active">
+            <div id="room-list">
+                <div class="list-card" onclick="openChatRoom('yongin')">
+                    <span class="badge">경기 용인시</span>
+                    <h3>용인시 사장님 소통방</h3>
+                    <p>현재 124명 참여 중 · 최근 대화: 이번 달 부가세 신고...</p>
+                </div>
+                <div class="list-card" onclick="openChatRoom('gangnam')">
+                    <span class="badge">서울 강남구</span>
+                    <h3>강남구 사장님 소통방</h3>
+                    <p>현재 312명 참여 중 · 최근 대화: 알바생 시급 문의요</p>
+                </div>
             </div>
-            <p>💻 PC: 방향키 이동<br>📱 모바일: 화면 터치 후 드래그</p>
+
+            <div id="chat-room">
+                <button onclick="closeChatRoom()" style="margin-bottom:10px; padding:5px; background:none; border:none; color:#4f46e5; font-weight:bold; cursor:pointer;">← 방 목록으로 돌아가기</button>
+                <div id="chat-messages" class="chat-messages">
+                    </div>
+                <div class="chat-input-area">
+                    <input type="text" id="chat-input" placeholder="메시지를 입력하세요...">
+                    <button onclick="sendMessage()">전송</button>
+                </div>
+            </div>
         </div>
 
-        <div id="game-over-screen" class="overlay hidden">
-            <h2 style="color: #e74c3c;">게임 오버!</h2>
-            <h3 id="final-time">버틴 시간: 0초</h3>
-            <button class="btn" onclick="showStartScreen()">다시 하기</button>
+        <div id="tab-market" class="tab-content">
+            <div class="list-card">
+                <span class="badge" style="background:#fff1f2; color:#e11d48;">양도양수</span>
+                <h3>보드게임 카페 테이블 및 의자 세트 양도합니다</h3>
+                <p>상태 S급, 일괄 50만원에 넘깁니다. 용인 직거래 우대</p>
+            </div>
+            <div class="list-card">
+                <span class="badge" style="background:#f0fdf4; color:#16a34a;">중고기기</span>
+                <h3>포스기(POS) 및 영수증 프린터 급처분</h3>
+                <p>사용기간 6개월, 초기화 완료했습니다.</p>
+            </div>
         </div>
 
-        <canvas id="gameCanvas" width="800" height="500"></canvas>
-    </div>
+        <div id="tab-consult" class="tab-content">
+            <div class="list-card">
+                <span class="badge" style="background:#fffbeb; color:#d97706;">본사 직영방</span>
+                <h3>프리미엄 만화카페 가맹 상담방</h3>
+                <p>초기 창업 비용 2억 원대 예산 맞춤 상담 진행 중 (도서 세팅 포함)</p>
+            </div>
+            <div class="list-card">
+                <span class="badge" style="background:#fffbeb; color:#d97706;">본사 직영방</span>
+                <h3>무인 스터디카페 창업 문의</h3>
+                <p>상권 분석부터 키오스크 세팅까지 1:1 상담</p>
+            </div>
+        </div>
 
-    <script>
-        const canvas = document.getElementById('gameCanvas');
-        const ctx = canvas.getContext('2d');
+        <div id="tab-mypage" class="tab-content">
+            <div class="list-card" style="text-align:center; padding: 30px 15px;">
+                <h3>로그인하고 사장톡을 100% 활용하세요!</h3>
+                <p style="margin-top: 10px; margin-bottom: 20px;">사업자 인증 시 '인증 마크'가 부여됩니다.</p>
+                <button style="padding: 12px 40px; background: #333; color: white; border: none; border-radius: 8px; font-weight: bold;">카카오로 시작하기</button>
+            </div>
+        </div>
+    </main>
+
+    <nav class="bottom-nav">
+        <a class="nav-item active" onclick="switchTab('tab-chat', '지역별 소통방', this)">
+            <span class="nav-icon">💬</span>
+            <span>소통방</span>
+        </a>
+        <a class="nav-item" onclick="switchTab('tab-market', '사장님 장터', this)">
+            <span class="nav-icon">🛒</span>
+            <span>장터</span>
+        </a>
+        <a class="nav-item" onclick="switchTab('tab-consult', '창업상담', this)">
+            <span class="nav-icon">🤝</span>
+            <span>창업상담</span>
+        </a>
+        <a class="nav-item" onclick="switchTab('tab-mypage', '마이페이지', this)">
+            <span class="nav-icon">👤</span>
+            <span>마이페이지</span>
+        </a>
+    </nav>
+</div>
+
+<script>
+    // --- 1. 하단 탭 전환 로직 ---
+    function switchTab(tabId, title, element) {
+        // 모든 탭 컨텐츠 숨기기
+        document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
+        // 클릭한 탭 컨텐츠 보이기
+        document.getElementById(tabId).classList.add('active');
         
-        const startScreen = document.getElementById('start-screen');
-        const gameOverScreen = document.getElementById('game-over-screen');
-        const uiBar = document.getElementById('ui-bar');
-        const timeDisplay = document.getElementById('time-display');
-        const hpDisplay = document.getElementById('hp-display');
-        const finalTimeDisplay = document.getElementById('final-time');
-
-        let animationId;
-        let isPlaying = false;
-        let startTime;
-        let elapsedTime = 0;
-        let keys = {};
-
-        let player = { x: 100, y: 250, width: 40, height: 40, speed: 6, color: '', name: '', hp: 3 };
-        let enemy = { x: 700, y: 250, width: 50, height: 80, speed: 2, color: '#e74c3c', name: '장현철' };
-        let stones = [];
+        // 하단바 활성화 스타일 변경
+        document.querySelectorAll('.nav-item').forEach(el => el.classList.remove('active'));
+        element.classList.add('active');
         
-        let baseSpawnRate = 1000;
-        let lastSpawnTime = 0;
+        // 헤더 타이틀 변경
+        document.getElementById('header-title').innerText = title;
 
-        // PC 키보드 입력
-        window.addEventListener('keydown', (e) => keys[e.code] = true);
-        window.addEventListener('keyup', (e) => keys[e.code] = false);
-
-        // 모바일 터치 및 드래그 처리
-        function handleTouch(e) {
-            e.preventDefault(); // 스크롤 방지
-            if (!isPlaying) return;
-
-            const rect = canvas.getBoundingClientRect();
-            const touch = e.touches[0];
-            
-            // CSS 크기와 실제 캔버스 해상도(800x500) 비율 계산
-            const scaleX = canvas.width / rect.width;
-            const scaleY = canvas.height / rect.height;
-
-            // 터치 위치 계산 (캐릭터 중앙이 손가락에 오도록)
-            let touchX = (touch.clientX - rect.left) * scaleX;
-            let touchY = (touch.clientY - rect.top) * scaleY;
-
-            player.x = touchX - player.width / 2;
-            player.y = touchY - player.height / 2;
-
-            // 캐릭터가 화면 밖으로 나가지 않게 경계 설정
-            if (player.x < 0) player.x = 0;
-            if (player.x + player.width > enemy.x - 50) player.x = enemy.x - 50 - player.width;
-            if (player.y < 0) player.y = 0;
-            if (player.y + player.height > canvas.height) player.y = canvas.height - player.height;
+        // 탭 이동 시 채팅방 내부를 보고 있었다면 목록으로 초기화
+        if(tabId === 'tab-chat') {
+            closeChatRoom();
         }
+    }
 
-        canvas.addEventListener('touchstart', handleTouch, { passive: false });
-        canvas.addEventListener('touchmove', handleTouch, { passive: false });
+    // --- 2. 개별 채팅방(데이터 분리) 로직 ---
+    let currentRoomId = null;
+    
+    // 임시 데이터베이스 (방 ID별로 메시지를 배열로 관리하여 섞이지 않게 함)
+    const chatDatabase = {
+        'yongin': [
+            "사장님1: 오늘 비가 와서 그런지 홀이 조용하네요 ㅠㅠ",
+            "사장님2: 맞아요, 배달만 조금 들어오네요."
+        ],
+        'gangnam': [
+            "김사장: 역삼역 근처 전단지 알바 구해보신 분 계신가요?",
+            "박사장: 당근알바에 올리면 금방 구해집니다~"
+        ]
+    };
 
-        function showStartScreen() {
-            gameOverScreen.classList.add('hidden');
-            uiBar.classList.add('hidden');
-            startScreen.classList.remove('hidden');
-            ctx.clearRect(0, 0, canvas.width, canvas.height);
+    function openChatRoom(roomId) {
+        currentRoomId = roomId;
+        document.getElementById('room-list').style.display = 'none';
+        document.getElementById('chat-room').style.display = 'flex';
+        
+        // 방 제목 변경
+        const roomTitle = roomId === 'yongin' ? '용인시 소통방' : '강남구 소통방';
+        document.getElementById('header-title').innerText = roomTitle;
+
+        renderMessages();
+    }
+
+    function closeChatRoom() {
+        currentRoomId = null;
+        document.getElementById('room-list').style.display = 'block';
+        document.getElementById('chat-room').style.display = 'none';
+        document.getElementById('header-title').innerText = '지역별 소통방';
+    }
+
+    function renderMessages() {
+        const msgContainer = document.getElementById('chat-messages');
+        msgContainer.innerHTML = ''; // 기존 내용 지우기
+        
+        // 현재 방의 데이터만 불러와서 화면에 그림 (다른 방 데이터와 격리됨)
+        const messages = chatDatabase[currentRoomId] || [];
+        messages.forEach(msg => {
+            const div = document.createElement('div');
+            div.className = 'message';
+            div.innerText = msg;
+            msgContainer.appendChild(div);
+        });
+        
+        // 스크롤 맨 아래로
+        msgContainer.scrollTop = msgContainer.scrollHeight;
+    }
+
+    function sendMessage() {
+        const input = document.getElementById('chat-input');
+        const text = input.value.trim();
+        
+        if(text && currentRoomId) {
+            // 현재 방의 배열에만 메시지 추가
+            chatDatabase[currentRoomId].push("나: " + text);
+            input.value = '';
+            renderMessages();
         }
+    }
+</script>
 
-        function startGame(playerName, playerColor) {
-            startScreen.classList.add('hidden');
-            uiBar.classList.remove('hidden');
-            
-            player.name = playerName;
-            player.color = playerColor;
-            player.hp = 3;
-            player.x = 100;
-            player.y = canvas.height / 2 - player.height / 2;
-            
-            enemy.y = canvas.height / 2 - enemy.height / 2;
-            stones = [];
-            
-            startTime = Date.now();
-            lastSpawnTime = startTime;
-            isPlaying = true;
-            
-            updateHPDisplay();
-            gameLoop();
-        }
-
-        function updateHPDisplay() {
-            let hearts = '';
-            for(let i=0; i<player.hp; i++) hearts += '♥';
-            hpDisplay.textContent = `생명: ${hearts}`;
-            if(player.hp <= 1) hpDisplay.style.color = '#e74c3c';
-            else hpDisplay.style.color = '#2c3e50';
-        }
-
-        function gameOver() {
-            isPlaying = false;
-            cancelAnimationFrame(animationId);
-            uiBar.classList.add('hidden');
-            gameOverScreen.classList.remove('hidden');
-            finalTimeDisplay.textContent = `기록: ${elapsedTime.toFixed(2)}초`;
-        }
-
-        function spawnStone() {
-            const speedMultiplier = 1 + (elapsedTime / 10); 
-            const radius = 8 + Math.random() * 7;
-            const x = enemy.x;
-            const y = enemy.y + enemy.height / 2;
-            
-            const angle = Math.atan2((player.y + player.height/2) - y, player.x - x);
-            const spread = (Math.random() - 0.5) * 0.5; 
-            
-            const speed = (5 + Math.random() * 3) * speedMultiplier;
-            const vx = Math.cos(angle + spread) * speed;
-            const vy = Math.sin(angle + spread) * speed;
-
-            stones.push({ x, y, vx, vy, radius });
-        }
-
-        function update() {
-            const now = Date.now();
-            elapsedTime = (now - startTime) / 1000;
-            timeDisplay.textContent = `버틴 시간: ${elapsedTime.toFixed(2)}초`;
-
-            // 키보드 조작 (터치 미사용 시)
-            if (keys['ArrowUp'] && player.y > 0) player.y -= player.speed;
-            if (keys['ArrowDown'] && player.y + player.height < canvas.height) player.y += player.speed;
-            if (keys['ArrowLeft'] && player.x > 0) player.x -= player.speed;
-            if (keys['ArrowRight'] && player.x + player.width < enemy.x - 50) player.x += player.speed;
-
-            // 장현철(적) 상하 이동 패턴
-            enemy.y += Math.sin(now / 300) * 4;
-            if (enemy.y < 0) enemy.y = 0;
-            if (enemy.y + enemy.height > canvas.height) enemy.y = canvas.height - enemy.height;
-
-            // 돌 생성 주기
-            const currentSpawnRate = Math.max(150, baseSpawnRate - elapsedTime * 35); 
-            if (now - lastSpawnTime > currentSpawnRate) {
-                spawnStone();
-                lastSpawnTime = now;
-            }
-
-            // 돌 이동 및 충돌 판정
-            for (let i = stones.length - 1; i >= 0; i--) {
-                let s = stones[i];
-                s.x += s.vx;
-                s.y += s.vy;
-
-                let testX = s.x;
-                let testY = s.y;
-
-                if (s.x < player.x) testX = player.x;
-                else if (s.x > player.x + player.width) testX = player.x + player.width;
-                if (s.y < player.y) testY = player.y;
-                else if (s.y > player.y + player.height) testY = player.y + player.height;
-
-                let distX = s.x - testX;
-                let distY = s.y - testY;
-                let distance = Math.sqrt((distX*distX) + (distY*distY));
-
-                if (distance <= s.radius) {
-                    stones.splice(i, 1);
-                    player.hp--;
-                    updateHPDisplay();
-                    
-                    ctx.fillStyle = 'rgba(231, 76, 60, 0.5)';
-                    ctx.fillRect(0, 0, canvas.width, canvas.height);
-
-                    if (player.hp <= 0) {
-                        gameOver();
-                        return;
-                    }
-                } 
-                else if (s.x < -20 || s.y < -20 || s.y > canvas.height + 20) {
-                    stones.splice(i, 1);
-                }
-            }
-        }
-
-        function draw() {
-            ctx.clearRect(0, 0, canvas.width, canvas.height);
-
-            // 장현철 그리기
-            ctx.fillStyle = enemy.color;
-            ctx.fillRect(enemy.x, enemy.y, enemy.width, enemy.height);
-            ctx.fillStyle = 'black';
-            ctx.font = 'bold 14px Malgun Gothic';
-            ctx.fillText(enemy.name, enemy.x + 3, enemy.y - 10);
-
-            // 플레이어 그리기
-            ctx.fillStyle = player.color;
-            ctx.fillRect(player.x, player.y, player.width, player.height);
-            ctx.fillStyle = 'black';
-            ctx.font = 'bold 14px Malgun Gothic';
-            ctx.fillText(player.name, player.x, player.y - 10);
-
-            // 돌 그리기
-            ctx.fillStyle = '#7f8c8d';
-            for (let s of stones) {
-                ctx.beginPath();
-                ctx.arc(s.x, s.y, s.radius, 0, Math.PI * 2);
-                ctx.fill();
-                ctx.closePath();
-            }
-        }
-
-        function gameLoop() {
-            if (!isPlaying) return;
-            update();
-            draw();
-            animationId = requestAnimationFrame(gameLoop);
-        }
-    </script>
 </body>
 </html>
