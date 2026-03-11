@@ -5,291 +5,535 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>사장톡 | 대한민국 사장님 필수 앱</title>
     <style>
-        /* 기본 모바일 앱 스타일 초기화 */
-        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Pretendard', -apple-system, sans-serif; }
-        body { background-color: #f4f5f7; display: flex; justify-content: center; }
+        @import url('https://cdn.jsdelivr.net/gh/orioncactus/pretendard/dist/web/static/pretendard.css');
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Pretendard', -apple-system, sans-serif; letter-spacing: -0.3px; }
+        body { background-color: #f0f2f5; display: flex; justify-content: center; }
         
-        /* 모바일 화면 컨테이너 (PC에서 볼 때 모바일처럼 보이게) */
-        #app-container {
-            width: 100%;
-            max-width: 480px;
-            background-color: #ffffff;
-            height: 100vh;
-            display: flex;
-            flex-direction: column;
-            position: relative;
-            box-shadow: 0 0 20px rgba(0,0,0,0.1);
-        }
+        #app-container { width: 100%; max-width: 480px; background-color: #ffffff; height: 100vh; display: flex; flex-direction: column; position: relative; box-shadow: 0 0 20px rgba(0,0,0,0.05); overflow: hidden; }
 
-        /* 상단 헤더 */
-        header {
-            background-color: #ffffff;
-            /* 아이폰 노치 등 상단 안전 영역(Safe Area) 대응 추가 */
-            padding: calc(15px + env(safe-area-inset-top)) 20px 15px 20px;
-            border-bottom: 1px solid #e0e0e0;
-            position: sticky;
-            top: 0;
-            z-index: 10;
-        }
-        header h1 { font-size: 20px; color: #333; }
+        header { background-color: #ffffff; padding: calc(15px + env(safe-area-inset-top)) 20px 15px 20px; display: flex; justify-content: space-between; align-items: center; position: sticky; top: 0; z-index: 10; border-bottom: 1px solid #f1f5f9; }
+        header h1 { font-size: 20px; color: #111; font-weight: 800; }
+        .header-icons { font-size: 20px; color: #555; display: flex; gap: 12px; cursor: pointer; }
 
-        /* 메인 콘텐츠 영역 (스크롤 가능) */
-        main {
-            flex: 1;
-            overflow-y: auto;
-            padding: 20px;
-            padding-bottom: 80px; /* 하단바에 가리지 않게 여백 */
-        }
-
-        /* 각 탭의 화면 (초기엔 숨김) */
-        .tab-content { display: none; }
+        main { flex: 1; overflow-y: auto; background-color: #f4f5f7; padding-bottom: 90px; scroll-behavior: smooth; position: relative; }
+        .tab-content { display: none; animation: fadeIn 0.2s ease-in-out; }
         .tab-content.active { display: block; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
 
-        /* UI 리스트 스타일 (소통방, 장터 등) */
-        .list-card {
-            background: #fff;
-            border: 1px solid #eee;
-            border-radius: 12px;
-            padding: 15px;
-            margin-bottom: 12px;
-            box-shadow: 0 2px 5px rgba(0,0,0,0.02);
-            cursor: pointer;
-        }
-        .list-card h3 { font-size: 16px; margin-bottom: 5px; color: #222; }
-        .list-card p { font-size: 13px; color: #666; }
-        .badge {
-            display: inline-block;
-            padding: 3px 8px;
-            background: #eef2ff;
-            color: #4f46e5;
-            border-radius: 4px;
-            font-size: 11px;
-            font-weight: bold;
-            margin-bottom: 8px;
-        }
+        /* --- 공통 UI --- */
+        .section-title { font-size: 17px; font-weight: 800; color: #1e293b; margin: 25px 20px 10px 20px; display: flex; justify-content: space-between; align-items: center;}
+        .card { background: #fff; border-radius: 16px; padding: 16px; margin: 0 20px 12px 20px; box-shadow: 0 2px 8px rgba(0,0,0,0.03); cursor: pointer; transition: transform 0.1s; }
+        .card:active { transform: scale(0.98); }
+        .card h3 { font-size: 15px; margin-bottom: 6px; color: #1e293b; line-height: 1.4; font-weight: 700; }
+        .card p { font-size: 13px; color: #64748b; line-height: 1.5; white-space: pre-wrap; }
+        .badge { display: inline-block; padding: 4px 8px; border-radius: 6px; font-size: 11px; font-weight: 700; margin-bottom: 8px; }
+        .badge.blue { background: #eef2ff; color: #4f46e5; }
+        .badge.red { background: #fff1f2; color: #e11d48; }
+        .badge.dark { background: #1e293b; color: #f8fafc; }
+        .badge.green { background: #f0fdf4; color: #16a34a; }
+        .meta-info { font-size: 12px; color: #94a3b8; margin-top: 10px; display: flex; justify-content: space-between; align-items: center; }
 
-        /* 채팅방 내부 UI (소통방 클릭 시) */
-        #chat-room { display: none; height: 100%; flex-direction: column; }
+        /* 가로 스크롤 (카테고리) */
+        .category-scroll { display: flex; gap: 8px; overflow-x: auto; padding: 15px 20px 10px 20px; background: #fff; }
+        .category-scroll::-webkit-scrollbar { display: none; }
+        .category-label { flex: 0 0 auto; }
+        .category-label input[type="radio"] { display: none; }
+        .category-label span { display: inline-block; padding: 8px 14px; background: #f8fafc; border-radius: 20px; font-size: 13px; color: #64748b; cursor: pointer; border: 1px solid #e2e8f0; font-weight: 600; transition: all 0.2s;}
+        .category-label input[type="radio"]:checked + span { background: #1e293b; color: white; border-color: #1e293b; }
+
+        /* FAB */
+        .fab { position: absolute; bottom: 100px; right: 20px; width: 56px; height: 56px; background: #4f46e5; color: white; border-radius: 50%; display: none; justify-content: center; align-items: center; font-size: 24px; box-shadow: 0 4px 12px rgba(79, 70, 229, 0.3); cursor: pointer; z-index: 15; transition: transform 0.2s; }
+
+        /* --- [1] 홈 화면 개편 (위젯 중앙 배치) --- */
+        .home-briefing { padding: 25px 20px; background: linear-gradient(135deg, #1e293b, #0f172a); color: white; border-radius: 0 0 20px 20px; }
+        .home-briefing h2 { font-size: 18px; margin-bottom: 8px; font-weight: 800; }
+        .home-briefing p { font-size: 13px; color: #cbd5e1; line-height: 1.4; }
+        .home-briefing .highlight { color: #facc15; font-weight: bold; }
         
-        /* 부드러운 스크롤(scroll-behavior: smooth) 추가 */
-        .chat-messages { flex: 1; overflow-y: auto; background: #f9f9f9; padding: 15px; border-radius: 8px; margin-bottom: 10px; min-height: 300px; scroll-behavior: smooth; }
-        .message { margin-bottom: 10px; font-size: 14px; padding: 10px; background: #fff; border-radius: 8px; border: 1px solid #eee; }
-        .chat-input-area { display: flex; gap: 10px; }
-        .chat-input-area input { flex: 1; padding: 12px; border: 1px solid #ddd; border-radius: 8px; }
-        .chat-input-area button { padding: 12px 20px; background: #4f46e5; color: white; border: none; border-radius: 8px; font-weight: bold; cursor: pointer; }
+        .dashboard-widget { display: flex; gap: 10px; margin: 15px 20px 25px 20px; }
+        .dash-box { flex: 1; background: #fff; border-radius: 12px; padding: 18px 10px; box-shadow: 0 2px 8px rgba(0,0,0,0.04); display: flex; flex-direction: column; justify-content: center; align-items: center; gap: 8px; border: 1px solid #f1f5f9; cursor: pointer; transition: transform 0.1s; }
+        .dash-box:active { transform: scale(0.97); background: #f8fafc; }
+        .dash-box span { font-size: 12px; color: #64748b; font-weight: 600; }
+        .dash-box strong { font-size: 20px; color: #1e293b; font-weight: 800; }
+        .dash-box.alert strong { color: #e11d48; }
 
-        /* 하단 탭 메뉴 (Tab Menu) */
-        .bottom-nav {
-            position: absolute;
-            bottom: 0;
-            width: 100%;
-            background-color: #ffffff;
-            display: flex;
-            border-top: 1px solid #e0e0e0;
-            padding-bottom: env(safe-area-inset-bottom); /* 아이폰 하단 바 대응 */
-        }
-        .nav-item {
-            flex: 1;
-            text-align: center;
-            padding: 15px 0;
-            color: #888;
-            font-size: 12px;
-            text-decoration: none;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            gap: 4px;
-            cursor: pointer;
-        }
-        .nav-item.active { color: #4f46e5; font-weight: bold; }
-        .nav-icon { font-size: 20px; }
+        .hot-issue-scroll { display: flex; gap: 15px; overflow-x: auto; padding: 0 20px 20px 20px; scroll-snap-type: x mandatory; }
+        .hot-issue-scroll::-webkit-scrollbar { display: none; }
+        .hot-card { flex: 0 0 85%; scroll-snap-align: start; margin: 0; background: #fff; border-radius: 16px; padding: 16px; box-shadow: 0 2px 8px rgba(0,0,0,0.03); border: 1px solid #f1f5f9; cursor: pointer; transition: transform 0.1s;}
+        .hot-card:active { transform: scale(0.98); }
+
+        /* --- [2] 소통방 (유지) --- */
+        .chat-list-card { display: flex; align-items: center; gap: 15px; padding: 16px 20px; background: #fff; border-bottom: 1px solid #f1f5f9; cursor: pointer; }
+        .chat-thumb { width: 50px; height: 50px; border-radius: 16px; background: #eef2ff; display: flex; justify-content: center; align-items: center; font-size: 24px; flex-shrink: 0; }
+        .chat-info { flex: 1; overflow: hidden; }
+        .chat-info h4 { font-size: 15px; color: #1e293b; margin-bottom: 4px; display: flex; align-items: center; gap: 5px; }
+        .chat-info p { font-size: 13px; color: #64748b; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .chat-count { font-size: 12px; color: #4f46e5; font-weight: bold; background: #e0e7ff; padding: 2px 6px; border-radius: 10px; }
+
+        /* 채팅방 내부 */
+        #chat-room-view { display: none; flex-direction: column; height: 100%; background: #f4f5f7; position: absolute; top: 0; left: 0; width: 100%; z-index: 25; }
+        .chat-header { background: #fff; padding: calc(15px + env(safe-area-inset-top)) 20px 15px 20px; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #eee; }
+        .chat-header-title { font-size: 16px; font-weight: 800; display: flex; align-items: center; gap: 10px; }
+        .btn-back { font-size: 20px; cursor: pointer; color: #1e293b; }
+        .chat-messages { flex: 1; overflow-y: auto; padding: 20px; display: flex; flex-direction: column; gap: 15px; }
+        .msg-row { display: flex; flex-direction: column; max-width: 85%; }
+        .msg-row.others { align-self: flex-start; }
+        .msg-row.me { align-self: flex-end; align-items: flex-end; }
+        .msg-profile { font-size: 11px; color: #64748b; margin-bottom: 4px; font-weight: bold; }
+        .msg-bubble { padding: 12px 16px; border-radius: 16px; font-size: 14px; line-height: 1.4; box-shadow: 0 1px 2px rgba(0,0,0,0.05); }
+        .msg-row.others .msg-bubble { background: #fff; border-top-left-radius: 4px; color: #1e293b; }
+        .msg-row.me .msg-bubble { background: #4f46e5; border-top-right-radius: 4px; color: #fff; }
+        .chat-input-area { background: #fff; padding: 12px 20px; padding-bottom: calc(12px + env(safe-area-inset-bottom)); display: flex; align-items: center; gap: 10px; border-top: 1px solid #eee; }
+        .chat-input { flex: 1; padding: 12px 15px; border: 1px solid #e2e8f0; border-radius: 20px; font-size: 14px; outline: none; background: #f8fafc; }
+        .btn-send { background: #1e293b; color: white; border: none; padding: 10px 16px; border-radius: 20px; font-weight: bold; font-size: 13px; cursor: pointer; }
+
+        /* --- [3] 대나무숲 (유지) --- */
+        .bamboo-header { background: #1e293b; color: white; padding: 20px; border-radius: 0 0 20px 20px; margin-bottom: 20px; }
+        .bamboo-header h2 { font-size: 18px; margin-bottom: 5px; }
+        .bamboo-header p { font-size: 13px; color: #cbd5e1; }
+        .bamboo-card { border-left: 4px solid #1e293b; }
+        .reaction-btns { display: flex; gap: 8px; margin-top: 12px; border-top: 1px dashed #e2e8f0; padding-top: 12px; }
+        .btn-react { flex: 1; padding: 8px; border: none; border-radius: 8px; font-size: 12px; font-weight: bold; cursor: pointer; display: flex; justify-content: center; align-items: center; gap: 5px; background: #f8fafc; color: #475569;}
+        .nickname-box { background: #f8fafc; padding: 12px; border-radius: 8px; font-size: 13px; color: #475569; margin-bottom: 15px; text-align: center; }
+        .nickname-box strong { color: #1e293b; font-size: 14px; }
+        .btn-refresh { background: none; border: none; color: #4f46e5; font-size: 12px; cursor: pointer; margin-left: 5px; font-weight: bold; }
+
+        /* --- [4] 장터 (유지) --- */
+        .market-price { font-size: 18px; font-weight: 800; color: #1e293b; margin-top: 8px; }
+        .market-thumb { width: 80px; height: 80px; background: #f1f5f9; border-radius: 12px; display: flex; justify-content: center; align-items: center; font-size: 32px; flex-shrink: 0; }
+        .market-card { display: flex; gap: 15px; }
+
+        /* --- [5] 전문가 상담 (유지) --- */
+        .fast-match-banner { background: linear-gradient(135deg, #4f46e5, #7c3aed); border-radius: 16px; padding: 20px; margin: 15px 20px; color: white; box-shadow: 0 4px 12px rgba(79, 70, 229, 0.2); }
+        .fast-match-banner h2 { font-size: 18px; margin-bottom: 6px; font-weight: 800; }
+        .btn-fast-match { width: 100%; background: #fff; color: #4f46e5; border: none; padding: 14px; border-radius: 10px; font-size: 15px; font-weight: bold; cursor: pointer; }
+        .expert-list-card { display: flex; gap: 15px; padding: 16px; background: #fff; border-radius: 16px; margin: 0 20px 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.03); align-items: center; border: 1px solid #f1f5f9; cursor: pointer; animation: fadeIn 0.3s; }
+        .expert-profile { width: 56px; height: 56px; border-radius: 50%; background: #eef2ff; display: flex; justify-content: center; align-items: center; font-size: 28px; flex-shrink: 0; }
+        .expert-info { flex: 1; overflow: hidden; }
+        .expert-info h4 { font-size: 15px; margin-bottom: 4px; color: #111; display: flex; align-items: center; gap: 4px; }
+        .expert-info p { font-size: 12px; color: #64748b; margin-bottom: 6px; line-height: 1.3; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .expert-stats { font-size: 11px; color: #d97706; font-weight: bold; }
+        .btn-direct-consult { padding: 8px 12px; background: #f8fafc; color: #4f46e5; border: 1px solid #e0e7ff; border-radius: 8px; font-size: 12px; font-weight: bold; cursor: pointer; white-space: nowrap; }
+
+        /* --- 공통 모달 UI --- */
+        .modal-overlay { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6); display: none; flex-direction: column; justify-content: flex-end; z-index: 40; }
+        .modal-content { background: #fff; border-radius: 20px 20px 0 0; padding: 20px; padding-bottom: calc(20px + env(safe-area-inset-bottom)); animation: slideUp 0.3s ease-out; display: flex; flex-direction: column; max-height: 90%; overflow-y: auto; }
+        @keyframes slideUp { from { transform: translateY(100%); } to { transform: translateY(0); } }
+        .modal-header-box { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; }
+        .modal-header-box h3 { font-size: 18px; color: #111; font-weight: 800; }
+        .btn-close { background: none; border: none; font-size: 24px; color: #999; cursor: pointer; }
+        .form-group { margin-bottom: 16px; }
+        .form-group label { display: block; font-size: 13px; color: #333; font-weight: bold; margin-bottom: 8px; }
+        .form-input, .form-textarea, .form-select { width: 100%; padding: 14px; border: 1px solid #e2e8f0; border-radius: 10px; font-size: 14px; outline: none; background: #f8fafc; }
+        .form-textarea { height: 100px; resize: none; }
+        .privacy-box { background: #f1f5f9; padding: 12px; border-radius: 8px; font-size: 12px; color: #64748b; margin-bottom: 20px; }
+        .btn-submit { width: 100%; padding: 16px; background: #1e293b; color: white; border: none; border-radius: 12px; font-size: 16px; font-weight: bold; cursor: pointer; }
+
+        /* 하단 탭 */
+        .bottom-nav { position: absolute; bottom: 0; width: 100%; background-color: #ffffff; display: flex; border-top: 1px solid #f1f1f1; padding-bottom: env(safe-area-inset-bottom); z-index: 20; }
+        .nav-item { flex: 1; text-align: center; padding: 10px 0; color: #94a3b8; font-size: 11px; font-weight: 600; text-decoration: none; display: flex; flex-direction: column; align-items: center; gap: 4px; cursor: pointer; transition: color 0.2s;}
+        .nav-item.active { color: #1e293b; }
+        .nav-icon { font-size: 22px; margin-bottom: 2px; }
     </style>
 </head>
 <body>
 
 <div id="app-container">
-    <header>
-        <h1 id="header-title">지역별 소통방</h1>
+    <header id="main-header">
+        <h1 id="header-title">사장톡</h1>
+        <div class="header-icons"><span>🔍</span><span>🔔</span></div>
     </header>
 
-    <main>
-        <div id="tab-chat" class="tab-content active">
-            <div id="room-list">
-                <div class="list-card" onclick="openChatRoom('yongin')">
-                    <span class="badge">경기 용인시</span>
-                    <h3>용인시 사장님 소통방</h3>
-                    <p>현재 124명 참여 중 · 최근 대화: 이번 달 부가세 신고...</p>
+    <main id="main-content">
+        <div id="tab-home" class="tab-content active">
+            <div class="home-briefing">
+                <h2>수지구 사장님, 안녕하세요!</h2>
+                <p>오늘 수지구는 <span class="highlight">비 ☔</span> 소식이 있습니다.<br>배달 주문이 늘어날 수 있으니 대비하세요!</p>
+            </div>
+            
+            <div class="section-title" style="margin-top: 20px;">내 활동 알림</div>
+            <div class="dashboard-widget">
+                <div class="dash-box alert" onclick="switchTab('tab-chat', '지역별 소통방', document.querySelectorAll('.nav-item')[1])">
+                    <span>안 읽은 동네채팅</span>
+                    <strong>12건</strong>
                 </div>
-                <div class="list-card" onclick="openChatRoom('gangnam')">
-                    <span class="badge">서울 강남구</span>
-                    <h3>강남구 사장님 소통방</h3>
-                    <p>현재 312명 참여 중 · 최근 대화: 알바생 시급 문의요</p>
+                <div class="dash-box" onclick="switchTab('tab-market', '사장님 장터', document.querySelectorAll('.nav-item')[3])">
+                    <span>내 장터글 반응</span>
+                    <strong>댓글 2</strong>
+                </div>
+                <div class="dash-box" onclick="switchTab('tab-consult', '전문가 상담', document.querySelectorAll('.nav-item')[4])">
+                    <span>세무 알림</span>
+                    <strong>D-5</strong>
                 </div>
             </div>
+            
+            <div class="section-title">투데이 핫이슈</div>
+            <div class="hot-issue-scroll">
+                <div class="hot-card bamboo-card" onclick="switchTab('tab-bamboo', '사장님 대나무숲', document.querySelectorAll('.nav-item')[2])">
+                    <span class="badge red">대나무숲 핫글</span>
+                    <h3>"요청사항: 아기 먹을거니 고기 양 두 배로..."</h3>
+                    <p style="margin-top:5px; font-size:12px; color:#666;">취소했더니 별점 1점을 주네요 진짜 화납니다.</p>
+                </div>
+                <div class="hot-card" onclick="switchTab('tab-market', '사장님 장터', document.querySelectorAll('.nav-item')[3])">
+                    <span class="badge green">장터 긴급 SOS</span>
+                    <h3>지금 당장 영수증 용지 빌려주실 분 ㅠㅠ</h3>
+                    <p style="margin-top:5px; font-size:12px; color:#666;">수지구청역 사거리입니다! 사례하겠습니다.</p>
+                </div>
+            </div>
+        </div>
 
-            <div id="chat-room">
-                <button onclick="closeChatRoom()" style="margin-bottom:10px; padding:5px; background:none; border:none; color:#4f46e5; font-weight:bold; cursor:pointer;">← 방 목록으로 돌아가기</button>
-                <div id="chat-messages" class="chat-messages">
+        <div id="tab-chat" class="tab-content">
+            <div class="category-scroll" style="padding-bottom:15px; border-bottom:1px solid #eee;">
+                <label class="category-label"><input type="radio" name="chat-cat" checked><span>전체</span></label>
+                <label class="category-label"><input type="radio" name="chat-cat"><span>📍 내 지역(용인)</span></label>
+                <label class="category-label"><input type="radio" name="chat-cat"><span>☕ 내 업종(카페)</span></label>
+            </div>
+            <div class="chat-list-card" onclick="openChatRoom('수지구 사장님 광장')">
+                <div class="chat-thumb" style="background:#eef2ff;">🏘️</div>
+                <div class="chat-info">
+                    <h4>수지구 사장님 광장 <span class="chat-count">342</span></h4>
+                    <p>김사장: 수지구청역 앞 지금 도로 통제하네요!</p>
+                </div>
+            </div>
+        </div>
+
+        <div id="tab-bamboo" class="tab-content">
+            <div class="bamboo-header">
+                <h2>🎋 사장님 대나무숲</h2>
+                <p>철저한 익명 보장! 사장님의 속마음을 털어놓으세요.</p>
+            </div>
+            <div id="bamboo-feed">
+                <div class="card bamboo-card">
+                    <span class="badge dark">노쇼/예약펑크</span>
+                    <h3>단체 20명 예약해놓고 잠수탔네요</h3>
+                    <p>예약 시간 지나도 안 오고 전화도 꺼져있습니다.</p>
+                    <div class="meta-info"><span>해탈한 국밥집 · 10분 전</span><span>👁️ 342</span></div>
+                    <div class="reaction-btns">
+                        <button class="btn-react angry">😡 혈압상승 45</button>
+                        <button class="btn-react hug">🫂 토닥토닥 12</button>
                     </div>
-                <div class="chat-input-area">
-                    <input type="text" id="chat-input" placeholder="메시지를 입력하세요...">
-                    <button onclick="sendMessage()">전송</button>
                 </div>
             </div>
         </div>
 
         <div id="tab-market" class="tab-content">
-            <div class="list-card">
-                <span class="badge" style="background:#fff1f2; color:#e11d48;">양도양수</span>
-                <h3>보드게임 카페 테이블 및 의자 세트 양도합니다</h3>
-                <p>상태 S급, 일괄 50만원에 넘깁니다. 용인 직거래 우대</p>
+            <div class="category-scroll">
+                <label class="category-label"><input type="radio" name="market-cat" checked><span>전체 매물</span></label>
+                <label class="category-label"><input type="radio" name="market-cat"><span>🚨 긴급SOS/나눔</span></label>
+                <label class="category-label"><input type="radio" name="market-cat"><span>🔒 양도양수</span></label>
             </div>
-            <div class="list-card">
-                <span class="badge" style="background:#f0fdf4; color:#16a34a;">중고기기</span>
-                <h3>포스기(POS) 및 영수증 프린터 급처분</h3>
-                <p>사용기간 6개월, 초기화 완료했습니다.</p>
+            <div class="card">
+                <div class="market-card">
+                    <div class="market-thumb" style="background:#fee2e2;">🚨</div>
+                    <div>
+                        <span class="badge red">긴급 나눔</span>
+                        <h3>영수증 용지 1롤 빌려주실 분 ㅠㅠ</h3>
+                        <div class="market-price">무료 나눔/교환</div>
+                    </div>
+                </div>
             </div>
         </div>
 
         <div id="tab-consult" class="tab-content">
-            <div class="list-card">
-                <span class="badge" style="background:#fffbeb; color:#d97706;">본사 직영방</span>
-                <h3>프리미엄 만화카페 가맹 상담방</h3>
-                <p>초기 창업 비용 2억 원대 예산 맞춤 상담 진행 중 (도서 세팅 포함)</p>
+            <div class="category-scroll">
+                <label class="category-label"><input type="radio" name="consult-cat" value="all" onchange="filterExperts(this.value)" checked><span>전체</span></label>
+                <label class="category-label"><input type="radio" name="consult-cat" value="tax" onchange="filterExperts(this.value)"><span>📊 세무/회계</span></label>
+                <label class="category-label"><input type="radio" name="consult-cat" value="labor" onchange="filterExperts(this.value)"><span>⚖️ 노무/직원</span></label>
+                <label class="category-label"><input type="radio" name="consult-cat" value="startup" onchange="filterExperts(this.value)"><span>🏢 창업/가맹</span></label>
+                <label class="category-label"><input type="radio" name="consult-cat" value="law" onchange="filterExperts(this.value)"><span>📜 법률/임대차</span></label>
             </div>
-            <div class="list-card">
-                <span class="badge" style="background:#fffbeb; color:#d97706;">본사 직영방</span>
-                <h3>무인 스터디카페 창업 문의</h3>
-                <p>상권 분석부터 키오스크 세팅까지 1:1 상담</p>
+            <div class="fast-match-banner">
+                <h2 id="banner-title">⚡ 복잡한 고민, 딱 1분이면 끝!</h2>
+                <p>내 상황을 입력하면 사장톡 인증 전문가들이<br>가장 합리적인 해결책과 견적을 먼저 보내드려요.</p>
+                <button class="btn-fast-match" onclick="openConsultModal('auto')">내 조건에 맞는 전문가 3곳 추천받기</button>
             </div>
-        </div>
-
-        <div id="tab-mypage" class="tab-content">
-            <div class="list-card" style="text-align:center; padding: 30px 15px;">
-                <h3>로그인하고 사장톡을 100% 활용하세요!</h3>
-                <p style="margin-top: 10px; margin-bottom: 20px;">사업자 인증 시 '인증 마크'가 부여됩니다.</p>
-                <button style="padding: 12px 40px; background: #333; color: white; border: none; border-radius: 8px; font-weight: bold; cursor: pointer;">카카오로 시작하기</button>
+            <div class="section-title">
+                <span id="list-title">전체 전문가 리스트</span>
+                <span style="font-size: 12px; color: #999; font-weight: normal;">인기순 ▾</span>
             </div>
+            <div id="expert-list-container"></div>
         </div>
     </main>
 
-    <nav class="bottom-nav">
-        <a class="nav-item active" onclick="switchTab('tab-chat', '지역별 소통방', this)">
-            <span class="nav-icon">💬</span>
-            <span>소통방</span>
-        </a>
-        <a class="nav-item" onclick="switchTab('tab-market', '사장님 장터', this)">
-            <span class="nav-icon">🛒</span>
-            <span>장터</span>
-        </a>
-        <a class="nav-item" onclick="switchTab('tab-consult', '창업상담', this)">
-            <span class="nav-icon">🤝</span>
-            <span>창업상담</span>
-        </a>
-        <a class="nav-item" onclick="switchTab('tab-mypage', '마이페이지', this)">
-            <span class="nav-icon">👤</span>
-            <span>마이페이지</span>
-        </a>
+    <div id="global-fab" class="fab" onclick="handleFabClick()">✏️</div>
+
+    <nav id="bottom-nav" class="bottom-nav">
+        <a class="nav-item active" onclick="switchTab('tab-home', '사장톡 홈', this)"><span class="nav-icon">🏠</span><span>홈</span></a>
+        <a class="nav-item" onclick="switchTab('tab-chat', '지역별 소통방', this)"><span class="nav-icon">💬</span><span>소통방</span></a>
+        <a class="nav-item" onclick="switchTab('tab-bamboo', '사장님 대나무숲', this)"><span class="nav-icon">🎋</span><span>대나무숲</span></a>
+        <a class="nav-item" onclick="switchTab('tab-market', '사장님 장터', this)"><span class="nav-icon">🛒</span><span>장터</span></a>
+        <a class="nav-item" onclick="switchTab('tab-consult', '전문가 상담', this)"><span class="nav-icon">👨‍💼</span><span>상담</span></a>
     </nav>
 </div>
 
+<div id="chat-room-view">
+    <div class="chat-header">
+        <div class="chat-header-title"><span class="btn-back" onclick="closeChatRoom()">←</span><span id="chat-room-name">채팅방</span></div>
+    </div>
+    <div class="chat-messages" id="chat-messages">
+        <div class="msg-row others"><div class="msg-profile">수지구 족발집 ✅</div><div class="msg-bubble">안녕하세요!</div></div>
+    </div>
+    <div class="chat-input-area">
+        <input type="text" id="chat-input" class="chat-input" placeholder="메시지 입력...">
+        <button class="btn-send" onclick="sendChatMessage()">전송</button>
+    </div>
+</div>
+
+<div id="bamboo-modal" class="modal-overlay" onclick="closeModalOnDim(event, 'bamboo-modal')">
+    <div class="modal-content" onclick="event.stopPropagation()">
+        <div class="modal-header-box">
+            <h3>속마음 털어놓기</h3>
+            <button class="btn-close" onclick="closeBambooModal()">✕</button>
+        </div>
+        <div class="nickname-box">
+            오늘 사장님의 닉네임: <strong id="current-nickname">[바람맞은 앞치마]</strong>
+            <button class="btn-refresh" onclick="generateNickname()">🔄 변경</button>
+        </div>
+        <div class="category-scroll" style="padding:0 0 10px 0; margin-bottom: 10px;">
+            <label class="category-label"><input type="radio" name="bamboo-category" value="배달/리뷰" checked><span>🛵 배달/리뷰</span></label>
+            <label class="category-label"><input type="radio" name="bamboo-category" value="노쇼/예약펑크"><span>👻 노쇼/예약펑크</span></label>
+            <label class="category-label"><input type="radio" name="bamboo-category" value="알바/직원"><span>🏃 알바/직원</span></label>
+        </div>
+        <div class="form-group">
+            <input type="text" class="form-input" id="post-title" placeholder="제목을 입력하세요" style="font-weight:bold; border:none; border-bottom:1px solid #eee; background:#fff;">
+        </div>
+        <div class="form-group">
+            <textarea class="form-textarea" id="post-content" placeholder="이곳에서 시원하게 털어내세요. (특정인 신상 정보나 심한 욕설은 주의해주세요.)" style="border:none; background:#fff; height:120px;"></textarea>
+        </div>
+        <div class="privacy-box" style="background:#fff;">
+            <label><input type="checkbox" id="hide-region"> 내 지역(용인시) 숨기기</label>
+        </div>
+        <button class="btn-submit" onclick="submitBambooPost()">등록하기</button>
+    </div>
+</div>
+
+<div id="market-modal" class="modal-overlay" onclick="closeModalOnDim(event, 'market-modal')">
+    <div class="modal-content" onclick="event.stopPropagation()">
+        <div class="modal-header-box"><h3>장터에 물건 올리기</h3><button class="btn-close" onclick="document.getElementById('market-modal').style.display='none'">✕</button></div>
+        <div class="form-group"><input type="text" class="form-input" placeholder="물품명 및 가격"></div>
+        <button class="btn-submit" onclick="document.getElementById('market-modal').style.display='none'; alert('장터에 등록되었습니다.');">물품 등록하기</button>
+    </div>
+</div>
+
+<div id="consult-modal" class="modal-overlay" onclick="closeModalOnDim(event, 'consult-modal')">
+    <div class="modal-content" onclick="event.stopPropagation()">
+        <div class="modal-header-box">
+            <h3 id="modal-title">전문가 상담 신청</h3>
+            <button class="btn-close" onclick="closeConsultModal()">✕</button>
+        </div>
+        <div class="form-group" id="auto-match-notice" style="display:none; background: #eef2ff; padding: 12px; border-radius: 8px; color: #4f46e5; font-size: 13px; font-weight: bold; margin-bottom: 15px;">💡 여러 명의 전문가에게 동시에 견적과 제안을 받아봅니다!</div>
+        <div class="form-group">
+            <label>어떤 분야의 상담인가요?</label>
+            <select class="form-select" id="consult-type">
+                <option value="" disabled selected>상담 분야 선택</option>
+                <option value="tax">📊 세무/회계</option>
+                <option value="labor">⚖️ 노무/직원</option>
+                <option value="startup">🏢 창업/가맹</option>
+                <option value="law">📜 법률/임대차</option>
+            </select>
+        </div>
+        <div class="form-group"><textarea class="form-textarea" id="consult-detail" placeholder="겪고 계신 문제를 적어주세요."></textarea></div>
+        <div class="form-group"><input type="tel" class="form-input" id="consult-phone" placeholder="연락받으실 번호 (안심번호로 변환)"></div>
+        <div class="privacy-box"><label><input type="checkbox" id="consult-agree"> <span>(필수) 전문가에게 정보를 제공하는 것에 동의합니다.</span></label></div>
+        <button class="btn-submit" onclick="submitConsult()">신청 완료하기</button>
+    </div>
+</div>
+
 <script>
-    // --- 1. 하단 탭 전환 로직 ---
+    // --- 1. 탭 및 FAB 제어 ---
+    let currentTab = 'tab-home';
+    const fab = document.getElementById('global-fab');
+
     function switchTab(tabId, title, element) {
-        // 모든 탭 컨텐츠 숨기기
+        currentTab = tabId;
         document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
-        // 클릭한 탭 컨텐츠 보이기
         document.getElementById(tabId).classList.add('active');
         
-        // 하단바 활성화 스타일 변경
         document.querySelectorAll('.nav-item').forEach(el => el.classList.remove('active'));
-        element.classList.add('active');
+        if (element) element.classList.add('active');
         
-        // 헤더 타이틀 변경
         document.getElementById('header-title').innerText = title;
-
-        // 탭 이동 시 채팅방 내부를 보고 있었다면 목록으로 초기화
-        if(tabId === 'tab-chat') {
-            closeChatRoom();
+        
+        if (tabId === 'tab-bamboo') {
+            fab.style.display = 'flex'; fab.innerText = '✏️'; fab.style.background = '#1e293b';
+        } else if (tabId === 'tab-market') {
+            fab.style.display = 'flex'; fab.innerText = '➕'; fab.style.background = '#16a34a';
+        } else {
+            fab.style.display = 'none';
         }
     }
 
-    // --- 2. 개별 채팅방(데이터 분리 & 로컬 스토리지 적용) 로직 ---
-    let currentRoomId = null;
-    
-    // 초기 기본 데이터
-    const defaultData = {
-        'yongin': [
-            "사장님1: 오늘 비가 와서 그런지 홀이 조용하네요 ㅠㅠ",
-            "사장님2: 맞아요, 배달만 조금 들어오네요."
-        ],
-        'gangnam': [
-            "김사장: 역삼역 근처 전단지 알바 구해보신 분 계신가요?",
-            "박사장: 당근알바에 올리면 금방 구해집니다~"
-        ]
-    };
+    function handleFabClick() {
+        if (currentTab === 'tab-bamboo') {
+            document.getElementById('bamboo-modal').style.display = 'flex';
+            generateNickname();
+        } else if (currentTab === 'tab-market') {
+            document.getElementById('market-modal').style.display = 'flex';
+        }
+    }
 
-    // 로컬 스토리지에서 저장된 데이터 불러오기 (없으면 기본 데이터 사용)
-    let chatDatabase = JSON.parse(localStorage.getItem('SajangTalk_Data')) || defaultData;
+    function closeModalOnDim(event, modalId) {
+        if (event.target.id === modalId) document.getElementById(modalId).style.display = 'none';
+    }
 
-    function openChatRoom(roomId) {
-        currentRoomId = roomId;
-        document.getElementById('room-list').style.display = 'none';
-        document.getElementById('chat-room').style.display = 'flex';
-        
-        // 방 제목 변경
-        const roomTitle = roomId === 'yongin' ? '용인시 소통방' : '강남구 소통방';
-        document.getElementById('header-title').innerText = roomTitle;
-
-        renderMessages();
+    // --- 2. 소통방 채팅 로직 ---
+    function openChatRoom(roomName) {
+        document.getElementById('chat-room-name').innerText = roomName;
+        document.getElementById('main-header').style.display = 'none';
+        document.getElementById('main-content').style.display = 'none';
+        document.getElementById('bottom-nav').style.display = 'none';
+        document.getElementById('chat-room-view').style.display = 'flex';
     }
 
     function closeChatRoom() {
-        currentRoomId = null;
-        document.getElementById('room-list').style.display = 'block';
-        document.getElementById('chat-room').style.display = 'none';
-        document.getElementById('header-title').innerText = '지역별 소통방';
+        document.getElementById('chat-room-view').style.display = 'none';
+        document.getElementById('main-header').style.display = 'flex';
+        document.getElementById('main-content').style.display = 'block';
+        document.getElementById('bottom-nav').style.display = 'flex';
     }
 
-    function renderMessages() {
-        const msgContainer = document.getElementById('chat-messages');
-        msgContainer.innerHTML = ''; // 기존 내용 지우기
-        
-        // 현재 방의 데이터만 불러와서 화면에 그림
-        const messages = chatDatabase[currentRoomId] || [];
-        messages.forEach(msg => {
-            const div = document.createElement('div');
-            div.className = 'message';
-            div.innerText = msg;
-            msgContainer.appendChild(div);
-        });
-        
-        // 스크롤 맨 아래로 이동
-        msgContainer.scrollTop = msgContainer.scrollHeight;
-    }
-
-    function sendMessage() {
+    function sendChatMessage() {
         const input = document.getElementById('chat-input');
-        const text = input.value.trim();
-        
-        if(text && currentRoomId) {
-            // 현재 방의 배열에 메시지 추가
-            chatDatabase[currentRoomId].push("나: " + text);
-            
-            // 변경된 데이터를 로컬 스토리지에 저장하여 새로고침해도 유지되게 함
-            localStorage.setItem('SajangTalk_Data', JSON.stringify(chatDatabase));
-            
-            input.value = '';
-            renderMessages();
-        }
+        if (!input.value.trim()) return;
+        const msgs = document.getElementById('chat-messages');
+        const newMsg = document.createElement('div');
+        newMsg.className = 'msg-row me';
+        newMsg.innerHTML = `<div class="msg-bubble">${input.value.trim()}</div>`;
+        msgs.appendChild(newMsg);
+        input.value = '';
+        msgs.scrollTop = msgs.scrollHeight;
     }
 
-    // --- 3. 엔터 키 전송 이벤트 추가 ---
-    document.getElementById('chat-input').addEventListener('keypress', function(e) {
-        if (e.key === 'Enter') {
-            sendMessage();
+    // --- 3. 대나무숲 동적 생성 로직 ---
+    const nicknameList = ['오열하는 포스기', '분노한 마카롱', '해탈한 국밥집', '바람맞은 앞치마', '뒷목잡는 영수증', '잠못드는 제빙기'];
+    let currentNick = '';
+
+    function generateNickname() {
+        currentNick = nicknameList[Math.floor(Math.random() * nicknameList.length)];
+        document.getElementById('current-nickname').innerText = `[${currentNick}]`;
+    }
+
+    function closeBambooModal() {
+        document.getElementById('bamboo-modal').style.display = 'none';
+        document.getElementById('post-title').value = '';
+        document.getElementById('post-content').value = '';
+    }
+
+    function submitBambooPost() {
+        const title = document.getElementById('post-title').value.trim();
+        const content = document.getElementById('post-content').value.trim();
+        const categoryElement = document.querySelector('input[name="bamboo-category"]:checked');
+        const category = categoryElement ? categoryElement.value : '기타';
+        const hideRegion = document.getElementById('hide-region').checked;
+        
+        if (!title || !content) { alert('제목과 내용을 모두 입력해주세요.'); return; }
+
+        let badgeColor = category.includes('리뷰') ? 'red' : category.includes('노쇼') ? 'dark' : 'blue';
+        let infoText = hideRegion ? '전국 사장님' : '용인시 수지구 카페';
+
+        const newCard = document.createElement('div');
+        newCard.className = 'card bamboo-card';
+        newCard.innerHTML = `
+            <span class="badge ${badgeColor}">${category}</span>
+            <h3>${title}</h3>
+            <p>${content}</p>
+            <div class="meta-info"><span>${currentNick} (${infoText}) · 방금 전</span><span>👁️ 1</span></div>
+            <div class="reaction-btns">
+                <button class="btn-react angry">😡 혈압상승 0</button>
+                <button class="btn-react hug">🫂 토닥토닥 0</button>
+            </div>
+        `;
+
+        const feed = document.getElementById('bamboo-feed');
+        feed.insertBefore(newCard, feed.firstChild);
+        closeBambooModal();
+    }
+
+    // --- 4. 전문가 상담 동적 필터링 로직 ---
+    const expertsDB = [
+        { id: 1, cat: 'tax', icon: '💼', name: '김성공 세무사', agency: '성공 세무법인', desc: '배달앱 매출 누락, 종합소득세 절세 전문입니다.', stats: '⭐ 4.9 (124)' },
+        { id: 2, cat: 'labor', icon: '👨‍⚖️', name: '박해결 노무사', agency: '바른 노무법인', desc: '5인 미만 사업장 주휴수당, 부당해고 완벽 방어', stats: '⭐ 4.8 (89)' },
+        { id: 3, cat: 'startup', icon: '🏢', name: '이도약 가맹거래사', agency: '도약 창업컨설팅', desc: '상권 분석 및 유망 프랜차이즈 가맹 비교 전문', stats: '⭐ 5.0 (42)' },
+        { id: 4, cat: 'law', icon: '⚖️', name: '한판결 변호사', agency: '승소 법률사무소', desc: '상가 건물주 명도소송 방어, 권리금 회수 전문', stats: '⭐ 4.9 (67)' },
+        { id: 5, cat: 'tax', icon: '🧾', name: '이절세 회계사', agency: '절세 파트너즈', desc: '요식업 전문 기장 대리, 인건비 신고 완벽 처리', stats: '⭐ 4.7 (210)' }
+    ];
+
+    let currentSelectedCategory = 'all';
+    let currentTargetExpert = 'auto';
+
+    function filterExperts(category) {
+        currentSelectedCategory = category;
+        const container = document.getElementById('expert-list-container');
+        const listTitle = document.getElementById('list-title');
+        container.innerHTML = ''; 
+
+        const titleMap = { 'all': '전체', 'tax': '세무/회계', 'labor': '노무/직원', 'startup': '창업/가맹', 'law': '법률/임대차' };
+        listTitle.innerText = `${titleMap[category]} 전문가 리스트`;
+
+        const filteredData = category === 'all' ? expertsDB : expertsDB.filter(ex => ex.cat === category);
+
+        if (filteredData.length === 0) {
+            container.innerHTML = '<div style="text-align:center; padding: 40px; color:#999; font-size:14px;">해당 카테고리의 전문가를 모시고 있는 중입니다.</div>';
+            return;
         }
-    });
+
+        filteredData.forEach(expert => {
+            const card = document.createElement('div');
+            card.className = 'expert-list-card';
+            card.onclick = () => openConsultModal(expert.name);
+            card.innerHTML = `
+                <div class="expert-profile">${expert.icon}</div>
+                <div class="expert-info">
+                    <h4>${expert.name} <span style="font-size:12px; color:#4f46e5;">(${expert.agency})</span></h4>
+                    <p>${expert.desc}</p>
+                    <div class="expert-stats">${expert.stats}</div>
+                </div>
+                <button class="btn-direct-consult">지정 상담</button>
+            `;
+            container.appendChild(card);
+        });
+    }
+
+    filterExperts('all');
+
+    function openConsultModal(expertName) {
+        currentTargetExpert = expertName || 'auto';
+        const modalTitle = document.getElementById('modal-title');
+        const autoMatchNotice = document.getElementById('auto-match-notice');
+        
+        if (currentTargetExpert === 'auto') {
+            modalTitle.innerText = "전문가 1:1 맞춤 추천받기";
+            autoMatchNotice.style.display = 'block';
+            document.getElementById('consult-type').value = currentSelectedCategory !== 'all' ? currentSelectedCategory : '';
+        } else {
+            modalTitle.innerText = `[${currentTargetExpert}] 상담 신청`;
+            autoMatchNotice.style.display = 'none';
+        }
+        document.getElementById('consult-modal').style.display = 'flex';
+    }
+
+    function closeConsultModal() {
+        document.getElementById('consult-modal').style.display = 'none';
+        document.getElementById('consult-detail').value = '';
+        document.getElementById('consult-phone').value = '';
+        document.getElementById('consult-agree').checked = false;
+    }
+
+    function submitConsult() {
+        const type = document.getElementById('consult-type').value;
+        const detail = document.getElementById('consult-detail').value.trim();
+        const phone = document.getElementById('consult-phone').value.trim();
+        const agree = document.getElementById('consult-agree').checked;
+        
+        if (!type || !detail || !phone) { alert('모든 항목을 입력해주세요.'); return; }
+        if (!agree) { alert('개인정보 제공에 동의하셔야 합니다.'); return; }
+
+        alert(currentTargetExpert === 'auto' 
+            ? `맞춤 추천 신청 완료!\n전문가 최대 3곳이 제안을 드릴 예정입니다.`
+            : `[${currentTargetExpert}]님께 상담 신청 접수 완료!\n곧 연락드릴 예정입니다.`);
+        
+        closeConsultModal();
+    }
 </script>
 
 </body>
