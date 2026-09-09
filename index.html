@@ -2,74 +2,122 @@
 <html>
   <head>
     <meta charset="utf-8" />
-    <title>WebAR 마인크래프트 프로토타입</title>
-    <!-- A-Frame 및 AR.js 라이브러리 불러오기 -->
+    <title>WebAR 마인크래프트 - 블록 선택</title>
     <script src="https://aframe.io/releases/1.3.0/aframe.min.js"></script>
     <script src="https://raw.githack.com/AR-js-org/AR.js/master/aframe/build/aframe-ar.js"></script>
 
+    <style>
+      /* 화면 하단 블록 선택 버튼 UI 스타일 */
+      #ui-container {
+        position: absolute;
+        bottom: 30px;
+        width: 100%;
+        display: flex;
+        justify-content: center;
+        gap: 10px;
+        z-index: 999; /* AR 카메라 화면보다 위에 표시되도록 설정 */
+        pointer-events: none; /* 빈 공간 터치 시 AR 화면으로 이벤트 넘김 */
+      }
+      .block-btn {
+        pointer-events: auto; /* 버튼 영역은 터치 인식 */
+        width: 60px;
+        height: 60px;
+        border-radius: 8px;
+        border: 3px solid transparent;
+        font-size: 16px;
+        font-weight: bold;
+        color: white;
+        text-shadow: 1px 1px 2px black;
+        box-shadow: 0 4px 6px rgba(0,0,0,0.3);
+        cursor: pointer;
+        transition: transform 0.1s;
+      }
+      /* 선택된 버튼에 하얀색 테두리와 확대 효과 부여 */
+      .selected {
+        border: 3px solid white;
+        transform: scale(1.15);
+      }
+    </style>
+
     <script>
-      // 블록을 클릭(터치)하면 새로운 블록을 생성하는 컴포넌트
+      // 1. 현재 선택된 블록 색상을 저장하는 전역 변수 (기본값: 나무)
+      let currentSelectedColor = '#8B4513';
+
+      // 2. HTML 문서가 모두 불러와지면 UI 이벤트 활성화
+      window.onload = () => {
+        const buttons = document.querySelectorAll('.block-btn');
+        const cursor = document.querySelector('a-cursor');
+
+        buttons.forEach(btn => {
+          btn.addEventListener('click', (e) => {
+            // 버튼에 저장된 data-color 값을 가져와 전역 변수에 저장
+            currentSelectedColor = btn.getAttribute('data-color');
+            
+            // 화면 중앙 커서의 색상을 선택한 블록 색상으로 변경 (미리보기)
+            cursor.setAttribute('color', currentSelectedColor);
+
+            // 모든 버튼의 선택 효과를 지우고, 방금 누른 버튼만 강조
+            buttons.forEach(b => b.classList.remove('selected'));
+            btn.classList.add('selected');
+          });
+        });
+      };
+
+      // 3. 블록 생성 컴포넌트
       AFRAME.registerComponent('voxel-builder', {
         init: function () {
           this.el.addEventListener('click', (evt) => {
-            // 클릭된 정확한 좌표(intersection point) 가져오기
             const intersection = evt.detail.intersection;
             if (!intersection) return;
 
-            // 새로운 블록(a-box) 생성
             const newBlock = document.createElement('a-box');
             
-            // 블록 크기 및 색상 설정 (마인크래프트 나무 블록 느낌)
             newBlock.setAttribute('width', '0.5');
             newBlock.setAttribute('height', '0.5');
             newBlock.setAttribute('depth', '0.5');
-            newBlock.setAttribute('color', '#8B4513'); 
             
-            // 방금 터치한 면을 기준으로 새 블록의 위치 계산 (y축으로 쌓아올림)
+            // ⭐️ 고정된 색상이 아닌, 현재 선택된 색상(currentSelectedColor)을 적용
+            newBlock.setAttribute('color', currentSelectedColor);
+            
             const clickPoint = intersection.point;
             const normal = intersection.face.normal;
             
-            // 블록 크기의 절반(0.25)만큼 띄워서 배치
             newBlock.setAttribute('position', {
               x: clickPoint.x + (normal.x * 0.25),
               y: clickPoint.y + (normal.y * 0.25),
               z: clickPoint.z + (normal.z * 0.25)
             });
 
-            // 새 블록에도 클릭 이벤트를 부여하여 계속 쌓을 수 있게 함
             newBlock.setAttribute('voxel-builder', '');
-            
-            // 마커 그룹(scene)에 새 블록 추가
-            const markerGroup = document.querySelector('#voxel-group');
-            markerGroup.appendChild(newBlock);
+            document.querySelector('#voxel-group').appendChild(newBlock);
           });
         }
       });
     </script>
   </head>
 
-  <!-- 브라우저 여백 제거 및 스크롤 방지 -->
   <body style="margin: 0; overflow: hidden;">
-    <!-- AR 씬 설정 (디버그 UI 끄기) -->
+    
+    <!-- HTML UI 영역 -->
+    <div id="ui-container">
+      <button class="block-btn" data-color="#4CAF50" style="background-color: #4CAF50;">잔디</button>
+      <button class="block-btn selected" data-color="#8B4513" style="background-color: #8B4513;">나무</button>
+      <button class="block-btn" data-color="#808080" style="background-color: #808080;">돌</button>
+      <button class="block-btn" data-color="#FFD700" style="background-color: #FFD700;">금</button>
+    </div>
+
+    <!-- AR 렌더링 영역 -->
     <a-scene embedded arjs="sourceType: webcam; debugUIEnabled: false;" cursor="rayOrigin: mouse">
-      
-      <!-- 'Hiro' 마커를 인식했을 때 나타날 객체들 -->
       <a-marker preset="hiro">
-        <!-- 블록들이 담길 그룹 -->
         <a-entity id="voxel-group">
-          <!-- 기본으로 생성되어 있는 첫 잔디 블록 -->
-          <a-box 
-            position="0 0.25 0" 
-            width="0.5" height="0.5" depth="0.5" 
-            color="#4CAF50" 
-            voxel-builder>
-          </a-box>
+          <!-- 맨 처음 바닥에 깔려있는 기준 블록 -->
+          <a-box position="0 0.25 0" width="0.5" height="0.5" depth="0.5" color="#4CAF50" voxel-builder></a-box>
         </a-entity>
       </a-marker>
 
-      <!-- 사용자 카메라 (시점) -->
       <a-entity camera>
-        <a-cursor color="yellow"></a-cursor>
+        <!-- 기본 커서 색상을 나무색으로 세팅 -->
+        <a-cursor color="#8B4513"></a-cursor>
       </a-entity>
     </a-scene>
   </body>
