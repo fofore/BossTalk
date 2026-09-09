@@ -2,137 +2,115 @@
 <html>
   <head>
     <meta charset="utf-8" />
-    <title>WebAR 마인크래프트 - 랜덤 생성 (마커 없음)</title>
-    <!-- A-Frame 및 AR.js 라이브러리 (최신 WebXR 지원) -->
+    <title>WebAR - 다가오는 적 물리치기</title>
+    <!-- A-Frame 및 AR.js 로드 -->
     <script src="https://aframe.io/releases/1.3.0/aframe.min.js"></script>
-    <!-- ar-plane-tracking 컴포넌트 포함된 AR.js 빌드 -->
     <script src="https://raw.githack.com/AR-js-org/AR.js/master/aframe/build/aframe-ar-nft.js"></script>
 
     <style>
-      /* 화면 하단 블록 선택 버튼 UI 스타일 (기존 유지) */
       #ui-container {
         position: absolute;
-        bottom: 30px;
+        top: 20px;
         width: 100%;
-        display: flex;
-        justify-content: center;
-        gap: 10px;
+        text-align: center;
         z-index: 999;
         pointer-events: none;
       }
-      .block-btn {
-        pointer-events: auto;
-        width: 60px;
-        height: 60px;
-        border-radius: 8px;
-        border: 3px solid transparent;
-        font-size: 16px;
-        font-weight: bold;
+      .title-box {
+        display: inline-block;
+        background-color: rgba(0, 0, 0, 0.7);
         color: white;
-        text-shadow: 1px 1px 2px black;
-        box-shadow: 0 4px 6px rgba(0,0,0,0.3);
-        cursor: pointer;
-        transition: transform 0.1s;
-      }
-      .selected {
-        border: 3px solid white;
-        transform: scale(1.15);
+        padding: 10px 20px;
+        border-radius: 8px;
+        font-family: sans-serif;
+        font-weight: bold;
       }
     </style>
 
     <script>
-      // 1. 현재 선택된 블록 색상을 저장하는 전역 변수 (기본값: 나무)
-      let currentSelectedColor = '#8B4513';
-
-      // 2. HTML 문서 로드 완료 시 UI 이벤트 활성화 (기존 유지)
-      window.onload = () => {
-        const buttons = document.querySelectorAll('.block-btn');
-        const cursor = document.querySelector('a-cursor');
-
-        buttons.forEach(btn => {
-          btn.addEventListener('click', (e) => {
-            currentSelectedColor = btn.getAttribute('data-color');
-            cursor.setAttribute('color', currentSelectedColor);
-            buttons.forEach(b => b.classList.remove('selected'));
-            btn.classList.add('selected');
-          });
-        });
-      };
-
-      // 3. 블록 생성 컴포넌트 (기존 유지, 클릭하여 쌓기)
-      AFRAME.registerComponent('voxel-builder', {
+      // 1. 적(Enemy)의 행동을 제어하는 컴포넌트
+      AFRAME.registerComponent('enemy-behavior', {
+        schema: {
+          health: { type: 'int', default: 3 }, // 기본 체력 3
+          speed: { type: 'number', default: 0.02 } // 이동 속도
+        },
+        
         init: function () {
-          this.el.addEventListener('click', (evt) => {
-            const intersection = evt.detail.intersection;
-            if (!intersection) return;
-
-            const newBlock = document.createElement('a-box');
-            newBlock.setAttribute('width', '0.5');
-            newBlock.setAttribute('height', '0.5');
-            newBlock.setAttribute('depth', '0.5');
-            newBlock.setAttribute('color', currentSelectedColor);
+          this.cameraEl = document.querySelector('[camera]');
+          this.updateAppearance();
+          
+          // 터치(클릭) 이벤트 리스너: 체력 감소 로직
+          this.el.addEventListener('click', () => {
+            this.data.health--; // 체력 1 감소
             
-            const clickPoint = intersection.point;
-            const normal = intersection.face.normal;
-            
-            newBlock.setAttribute('position', {
-              x: clickPoint.x + (normal.x * 0.25),
-              y: clickPoint.y + (normal.y * 0.25),
-              z: clickPoint.z + (normal.z * 0.25)
-            });
-
-            newBlock.setAttribute('voxel-builder', '');
-            document.querySelector('#voxel-group').appendChild(newBlock);
+            if (this.data.health <= 0) {
+              // 체력이 0 이하가 되면 화면에서 제거
+              this.el.parentNode.removeChild(this.el);
+            } else {
+              // 아직 살아있다면 색상 업데이트
+              this.updateAppearance();
+              // 타격 효과 (잠시 작아졌다 커짐)
+              this.el.setAttribute('scale', '0.3 0.3 0.3');
+              setTimeout(() => {
+                if(this.el) this.el.setAttribute('scale', '0.5 0.5 0.5');
+              }, 100);
+            }
           });
+        },
+
+        // 체력에 따라 색상을 변경하는 함수
+        updateAppearance: function () {
+          // 체력 3: 빨강, 2: 노랑, 1: 초록
+          const colors = ['#000000', '#4CAF50', '#FFEB3B', '#F44336']; 
+          this.el.setAttribute('color', colors[this.data.health]);
+        },
+
+        // 매 프레임마다 실행되는 함수 (이동 로직)
+        tick: function (time, timeDelta) {
+          // 1. 현재 적의 위치와 카메라(플레이어)의 위치 가져오기
+          const currentPos = this.el.object3D.position;
+          const targetPos = this.cameraEl.object3D.position;
+          
+          // 2. 카메라를 향하는 방향 벡터 계산
+          const direction = new THREE.Vector3().subVectors(targetPos, currentPos).normalize();
+          
+          // 3. 기기 프레임(timeDelta)에 비례하여 이동할 거리 계산 (부드러운 이동)
+          const moveDistance = this.data.speed * (timeDelta / 16); 
+          
+          // 4. 적의 위치 업데이트 (카메라 쪽으로 전진)
+          this.el.object3D.position.add(direction.multiplyScalar(moveDistance));
         }
       });
 
-      // ⭐️ 4. 마커 없이 랜덤 블록을 생성하는 컴포넌트 (새로 추가)
-      AFRAME.registerComponent('random-voxel-placer', {
+      // 2. 랜덤한 위치에서 적을 계속 생성하는 컴포넌트
+      AFRAME.registerComponent('enemy-spawner', {
         init: function () {
-          this.sceneEl = document.querySelector('a-scene');
-          this.cameraEl = document.querySelector('[camera]');
-          
-          // 일정 시간(예: 3초)마다 블록을 생성하는 타이머 설정
-          setInterval(this.placeRandomVoxel.bind(this), 3000); 
+          // 2초(2000ms)마다 적 생성 함수 호출
+          this.spawnTimer = setInterval(() => this.spawnEnemy(), 2000);
         },
+        
+        spawnEnemy: function () {
+          const scene = document.querySelector('a-scene');
+          const enemy = document.createElement('a-box');
 
-        placeRandomVoxel: function () {
-          // 생성된 블록 개수 제한 (성능 최적화, 10개로 제한)
-          const voxelGroup = document.querySelector('#voxel-group');
-          if (voxelGroup.childNodes.length >= 10) return;
-
-          // 카메라의 현재 위치와 방향 정보 가져오기
-          const cameraPosition = this.cameraEl.object3D.position;
-          const cameraDirection = new THREE.Vector3();
-          this.cameraEl.object3D.getWorldDirection(cameraDirection);
-
-          // 카메라가 바라보는 방향의 앞쪽(예: 2m ~ 5m) 랜덤 거리에 블록 배치 위치 계산
-          const minDistance = 2;
-          const maxDistance = 5;
-          const randomDistance = Math.random() * (maxDistance - minDistance) + minDistance;
+          // 카메라 기준 반경 8~12m 밖의 랜덤한 위치 계산
+          const radius = 8 + Math.random() * 4; 
+          const angle = Math.random() * Math.PI * 2; // 0 ~ 360도 랜덤
           
-          const newBlockPosition = cameraPosition.clone().add(cameraDirection.multiplyScalar(randomDistance));
-
-          // XY 평면(바닥) 기준으로 약간의 랜덤 오프셋 추가
-          const offsetX = (Math.random() - 0.5) * 2; // -1m ~ 1m
-          const offsetZ = (Math.random() - 0.5) * 2; // -1m ~ 1m
-          newBlockPosition.x += offsetX;
-          newBlockPosition.z += offsetZ;
-          // 바닥에 배치되도록 y축을 조정 (예: 0.25m, 블록 높이의 절반)
-          newBlockPosition.y = 0.25; 
-
-          // 새로운 블록 생성 및 설정
-          const newBlock = document.createElement('a-box');
-          newBlock.setAttribute('width', '0.5');
-          newBlock.setAttribute('height', '0.5');
-          newBlock.setAttribute('depth', '0.5');
-          newBlock.setAttribute('color', currentSelectedColor);
-          newBlock.setAttribute('position', newBlockPosition);
+          const startX = Math.cos(angle) * radius;
+          const startZ = Math.sin(angle) * radius;
+          const startY = Math.random() * 2; // 높이는 0~2m 사이 랜덤
           
-          // 기존 'voxel-builder' 컴포넌트를 추가하여 사용자가 클릭하여 계속 쌓을 수 있게 함
-          newBlock.setAttribute('voxel-builder', '');
-          voxelGroup.appendChild(newBlock);
+          enemy.setAttribute('position', {x: startX, y: startY, z: startZ});
+          enemy.setAttribute('scale', '0.5 0.5 0.5');
+          
+          // 랜덤 체력 부여 (1~3 사이)
+          const randomHealth = Math.floor(Math.random() * 3) + 1;
+          
+          // enemy-behavior 컴포넌트 추가
+          enemy.setAttribute('enemy-behavior', `health: ${randomHealth}`);
+          
+          scene.appendChild(enemy);
         }
       });
     </script>
@@ -140,26 +118,22 @@
 
   <body style="margin: 0; overflow: hidden;">
     
-    <!-- HTML UI 영역 (기존 유지) -->
+    <!-- UI 영역 -->
     <div id="ui-container">
-      <button class="block-btn" data-color="#4CAF50" style="background-color: #4CAF50;">잔디</button>
-      <button class="block-btn selected" data-color="#8B4513" style="background-color: #8B4513;">나무</button>
-      <button class="block-btn" data-color="#808080" style="background-color: #808080;">돌</button>
-      <button class="block-btn" data-color="#FFD700" style="background-color: #FFD700;">금</button>
+      <div class="title-box">
+        중앙 커서를 맞추고 화면을 터치해<br>다가오는 큐브를 파괴하세요!
+      </div>
     </div>
 
-    <!-- AR 렌더링 영역 (⭐️ 마커 제거 및 설정 변경) -->
-    <!-- arjs 설정을 위치 기반/평면 인식 모드로 변경 -->
-    <a-scene embedded arjs="sourceType: webcam; debugUIEnabled: false; trackingMethod: best;">
+    <!-- AR 씬 설정 -->
+    <a-scene embedded arjs="sourceType: webcam; debugUIEnabled: false;" enemy-spawner>
       
-      <!-- ⭐️ 마커 그룹(<a-marker>)을 제거하고 블록이 담길 그룹을 직접 배치 -->
-      <!-- random-voxel-placer 컴포넌트를 이 그룹에 적용하여 자동 생성 기능 활성화 -->
-      <a-entity id="voxel-group" random-voxel-placer></a-entity>
-
-      <a-entity camera>
-        <!-- 기본 커서 색상을 나무색으로 세팅 -->
-        <a-cursor color="#8B4513"></a-cursor>
+      <!-- 플레이어 카메라 -->
+      <a-entity camera position="0 1.6 0">
+        <!-- 조준점(커서) 추가 -->
+        <a-cursor color="#FFFFFF" animation__click="property: scale; startEvents: click; easing: easeInCubic; dur: 150; from: 0.1 0.1 0.1; to: 1 1 1"></a-cursor>
       </a-entity>
+      
     </a-scene>
   </body>
 </html>
