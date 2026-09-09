@@ -2,12 +2,14 @@
 <html>
   <head>
     <meta charset="utf-8" />
-    <title>WebAR 마인크래프트 - 블록 선택</title>
+    <title>WebAR 마인크래프트 - 랜덤 생성 (마커 없음)</title>
+    <!-- A-Frame 및 AR.js 라이브러리 (최신 WebXR 지원) -->
     <script src="https://aframe.io/releases/1.3.0/aframe.min.js"></script>
-    <script src="https://raw.githack.com/AR-js-org/AR.js/master/aframe/build/aframe-ar.js"></script>
+    <!-- ar-plane-tracking 컴포넌트 포함된 AR.js 빌드 -->
+    <script src="https://raw.githack.com/AR-js-org/AR.js/master/aframe/build/aframe-ar-nft.js"></script>
 
     <style>
-      /* 화면 하단 블록 선택 버튼 UI 스타일 */
+      /* 화면 하단 블록 선택 버튼 UI 스타일 (기존 유지) */
       #ui-container {
         position: absolute;
         bottom: 30px;
@@ -15,11 +17,11 @@
         display: flex;
         justify-content: center;
         gap: 10px;
-        z-index: 999; /* AR 카메라 화면보다 위에 표시되도록 설정 */
-        pointer-events: none; /* 빈 공간 터치 시 AR 화면으로 이벤트 넘김 */
+        z-index: 999;
+        pointer-events: none;
       }
       .block-btn {
-        pointer-events: auto; /* 버튼 영역은 터치 인식 */
+        pointer-events: auto;
         width: 60px;
         height: 60px;
         border-radius: 8px;
@@ -32,7 +34,6 @@
         cursor: pointer;
         transition: transform 0.1s;
       }
-      /* 선택된 버튼에 하얀색 테두리와 확대 효과 부여 */
       .selected {
         border: 3px solid white;
         transform: scale(1.15);
@@ -43,27 +44,22 @@
       // 1. 현재 선택된 블록 색상을 저장하는 전역 변수 (기본값: 나무)
       let currentSelectedColor = '#8B4513';
 
-      // 2. HTML 문서가 모두 불러와지면 UI 이벤트 활성화
+      // 2. HTML 문서 로드 완료 시 UI 이벤트 활성화 (기존 유지)
       window.onload = () => {
         const buttons = document.querySelectorAll('.block-btn');
         const cursor = document.querySelector('a-cursor');
 
         buttons.forEach(btn => {
           btn.addEventListener('click', (e) => {
-            // 버튼에 저장된 data-color 값을 가져와 전역 변수에 저장
             currentSelectedColor = btn.getAttribute('data-color');
-            
-            // 화면 중앙 커서의 색상을 선택한 블록 색상으로 변경 (미리보기)
             cursor.setAttribute('color', currentSelectedColor);
-
-            // 모든 버튼의 선택 효과를 지우고, 방금 누른 버튼만 강조
             buttons.forEach(b => b.classList.remove('selected'));
             btn.classList.add('selected');
           });
         });
       };
 
-      // 3. 블록 생성 컴포넌트
+      // 3. 블록 생성 컴포넌트 (기존 유지, 클릭하여 쌓기)
       AFRAME.registerComponent('voxel-builder', {
         init: function () {
           this.el.addEventListener('click', (evt) => {
@@ -71,12 +67,9 @@
             if (!intersection) return;
 
             const newBlock = document.createElement('a-box');
-            
             newBlock.setAttribute('width', '0.5');
             newBlock.setAttribute('height', '0.5');
             newBlock.setAttribute('depth', '0.5');
-            
-            // ⭐️ 고정된 색상이 아닌, 현재 선택된 색상(currentSelectedColor)을 적용
             newBlock.setAttribute('color', currentSelectedColor);
             
             const clickPoint = intersection.point;
@@ -93,12 +86,61 @@
           });
         }
       });
+
+      // ⭐️ 4. 마커 없이 랜덤 블록을 생성하는 컴포넌트 (새로 추가)
+      AFRAME.registerComponent('random-voxel-placer', {
+        init: function () {
+          this.sceneEl = document.querySelector('a-scene');
+          this.cameraEl = document.querySelector('[camera]');
+          
+          // 일정 시간(예: 3초)마다 블록을 생성하는 타이머 설정
+          setInterval(this.placeRandomVoxel.bind(this), 3000); 
+        },
+
+        placeRandomVoxel: function () {
+          // 생성된 블록 개수 제한 (성능 최적화, 10개로 제한)
+          const voxelGroup = document.querySelector('#voxel-group');
+          if (voxelGroup.childNodes.length >= 10) return;
+
+          // 카메라의 현재 위치와 방향 정보 가져오기
+          const cameraPosition = this.cameraEl.object3D.position;
+          const cameraDirection = new THREE.Vector3();
+          this.cameraEl.object3D.getWorldDirection(cameraDirection);
+
+          // 카메라가 바라보는 방향의 앞쪽(예: 2m ~ 5m) 랜덤 거리에 블록 배치 위치 계산
+          const minDistance = 2;
+          const maxDistance = 5;
+          const randomDistance = Math.random() * (maxDistance - minDistance) + minDistance;
+          
+          const newBlockPosition = cameraPosition.clone().add(cameraDirection.multiplyScalar(randomDistance));
+
+          // XY 평면(바닥) 기준으로 약간의 랜덤 오프셋 추가
+          const offsetX = (Math.random() - 0.5) * 2; // -1m ~ 1m
+          const offsetZ = (Math.random() - 0.5) * 2; // -1m ~ 1m
+          newBlockPosition.x += offsetX;
+          newBlockPosition.z += offsetZ;
+          // 바닥에 배치되도록 y축을 조정 (예: 0.25m, 블록 높이의 절반)
+          newBlockPosition.y = 0.25; 
+
+          // 새로운 블록 생성 및 설정
+          const newBlock = document.createElement('a-box');
+          newBlock.setAttribute('width', '0.5');
+          newBlock.setAttribute('height', '0.5');
+          newBlock.setAttribute('depth', '0.5');
+          newBlock.setAttribute('color', currentSelectedColor);
+          newBlock.setAttribute('position', newBlockPosition);
+          
+          // 기존 'voxel-builder' 컴포넌트를 추가하여 사용자가 클릭하여 계속 쌓을 수 있게 함
+          newBlock.setAttribute('voxel-builder', '');
+          voxelGroup.appendChild(newBlock);
+        }
+      });
     </script>
   </head>
 
   <body style="margin: 0; overflow: hidden;">
     
-    <!-- HTML UI 영역 -->
+    <!-- HTML UI 영역 (기존 유지) -->
     <div id="ui-container">
       <button class="block-btn" data-color="#4CAF50" style="background-color: #4CAF50;">잔디</button>
       <button class="block-btn selected" data-color="#8B4513" style="background-color: #8B4513;">나무</button>
@@ -106,14 +148,13 @@
       <button class="block-btn" data-color="#FFD700" style="background-color: #FFD700;">금</button>
     </div>
 
-    <!-- AR 렌더링 영역 -->
-    <a-scene embedded arjs="sourceType: webcam; debugUIEnabled: false;" cursor="rayOrigin: mouse">
-      <a-marker preset="hiro">
-        <a-entity id="voxel-group">
-          <!-- 맨 처음 바닥에 깔려있는 기준 블록 -->
-          <a-box position="0 0.25 0" width="0.5" height="0.5" depth="0.5" color="#4CAF50" voxel-builder></a-box>
-        </a-entity>
-      </a-marker>
+    <!-- AR 렌더링 영역 (⭐️ 마커 제거 및 설정 변경) -->
+    <!-- arjs 설정을 위치 기반/평면 인식 모드로 변경 -->
+    <a-scene embedded arjs="sourceType: webcam; debugUIEnabled: false; trackingMethod: best;">
+      
+      <!-- ⭐️ 마커 그룹(<a-marker>)을 제거하고 블록이 담길 그룹을 직접 배치 -->
+      <!-- random-voxel-placer 컴포넌트를 이 그룹에 적용하여 자동 생성 기능 활성화 -->
+      <a-entity id="voxel-group" random-voxel-placer></a-entity>
 
       <a-entity camera>
         <!-- 기본 커서 색상을 나무색으로 세팅 -->
